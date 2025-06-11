@@ -12,7 +12,10 @@ import '../controllers/AuthController.dart'; // Import AuthController
 enum PaymentMethod { cash, qrCode, card }
 
 class ThanhToan extends StatefulWidget {
-  const ThanhToan({Key? key}) : super(key: key); // Add const keyword and Key
+  final String soBan; // Thêm biến để nhận số bàn
+
+  const ThanhToan({Key? key, required this.soBan})
+    : super(key: key); // Cập nhật constructor
 
   @override
   _ThanhToanState createState() => _ThanhToanState();
@@ -112,6 +115,18 @@ class _ThanhToanState extends State<ThanhToan> {
               ),
             ),
             const SizedBox(height: 20),
+            // Hiển thị số bàn
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10.0),
+              child: Text(
+                'Số bàn: ${widget.soBan}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueAccent,
+                ),
+              ),
+            ),
             // Hiển thị danh sách các món ăn trong giỏ hàng
             // Container này giới hạn chiều cao của danh sách món ăn
             Container(
@@ -346,8 +361,7 @@ class _ThanhToanState extends State<ThanhToan> {
                 const SizedBox(height: 10),
                 // Hình ảnh mã QR code (bạn cần thay thế bằng mã QR thực tế)
                 Image.asset(
-                  'assets/HinhAnh/QR_placeholder.png', // <--- Cần thêm ảnh QR code vào đây
-                  width: 200,
+                  'assets/HinhAnh/QR_placeholder.png', //                   width: 200,
                   height: 200,
                   errorBuilder: (context, error, stackTrace) {
                     // Hiển thị thông báo nếu không tìm thấy ảnh
@@ -662,8 +676,6 @@ class _ThanhToanState extends State<ThanhToan> {
     final dbHelper = QLQuanAnDatabaseHelper.instance;
     try {
       // Generate a unique invoice ID
-      // This is where the issue might be. We need to ensure getNextHoaDonId()
-      // provides a genuinely new, incremented ID each time it's called.
       final nextInvoiceNumber = await dbHelper.getNextHoaDonId();
       final maHoaDon =
           'HD${nextInvoiceNumber.toString().padLeft(3, '0')}'; // Ví dụ: HD001, HD002
@@ -672,7 +684,6 @@ class _ThanhToanState extends State<ThanhToan> {
       final ngayDat = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
       // Mã khách hàng và nhân viên
-      // Cần lấy từ _maKhachHang và _maNhanVien đã được load từ AuthController
       final maKhachHangFinal = _maKhachHang ?? 'KH01'; // Fallback if not set
       final maNhanVienFinal = _maNhanVien ?? 'NV01'; // Fallback if not set
 
@@ -683,6 +694,7 @@ class _ThanhToanState extends State<ThanhToan> {
               : (_selectedPaymentMethod == PaymentMethod.qrCode
                   ? 'Chuyển khoản'
                   : 'Thẻ');
+      final trangThai = 'Đang chờ xác nhận'; // Trạng thái ban đầu của hóa đơn
 
       // Chuẩn bị dữ liệu cho bảng hoa_don
       final hoaDonData = {
@@ -695,6 +707,8 @@ class _ThanhToanState extends State<ThanhToan> {
         'con_lai': 0.0, // Giả định thanh toán đủ tiền
         'hinh_thuc_thanh_toan': hinhThucThanhToan,
         'ghi_chu': 'Thanh toán online qua ứng dụng',
+        'so_ban': widget.soBan, // Lưu số bàn vào hóa đơn
+        'trang_thai': trangThai, // Lưu trạng thái ban đầu
       };
 
       // Chèn dữ liệu vào bảng hoa_don

@@ -17,6 +17,7 @@ import 'auth/DangNhap.dart';
 import 'admin/AdminDashboard.dart';
 import 'admin/QuanLyHoaDonPage.dart'; // Import trang quản lý hóa đơn cho quản lý/nhân viên
 import 'LichSuHoaDonKhachHang.dart'; // Import trang lịch sử hóa đơn cho khách hàng
+import 'QuanLyTrangThaiDonHang.dart'; // Import trang quản lý trạng thái đơn hàng mới
 
 class TrangChu extends StatefulWidget {
   @override
@@ -87,10 +88,8 @@ class _TrangChuState extends State<TrangChu> {
           children: [
             const CircleAvatar(
               radius: 20,
-              backgroundImage: AssetImage(
-                'assets/HinhAnh/Logo.jpg',
-              ), // Logo quán ăn
-            ),
+              backgroundImage: AssetImage('assets/HinhAnh/Logo.jpg'),
+            ), // Đã sửa lỗi thiếu đóng ngoặc ở đây
             const SizedBox(width: 10),
             const Text(
               'Quán Ăn Ngon',
@@ -277,7 +276,6 @@ class _TrangChuState extends State<TrangChu> {
                     'Lịch Sử Hóa Đơn',
                     style: TextStyle(color: Colors.blue[800]),
                   ),
-                  // START: Vị trí của đoạn code bạn hỏi
                   onTap: () async {
                     Navigator.pop(context);
                     // Lấy tên khách hàng để truyền vào trang lịch sử hóa đơn
@@ -298,12 +296,10 @@ class _TrangChuState extends State<TrangChu> {
                       ),
                     );
                   },
-                  // END: Vị trí của đoạn code bạn hỏi
                 ),
               ],
               // HIỂN THỊ MỤC QUẢN LÝ HÓA ĐƠN CHO NHÂN VIÊN VÀ QUẢN LÝ
               if (isEmployeeOrManager) ...[
-                // <--- Đã sửa điều kiện về đúng `isEmployeeOrManager`
                 const Divider(color: Color(0xFFFFB2D9)),
                 ListTile(
                   leading: const Icon(
@@ -321,6 +317,25 @@ class _TrangChuState extends State<TrangChu> {
                       MaterialPageRoute(
                         builder: (context) => QuanLyHoaDonPage(),
                       ), // <--- Điều hướng đến QuanLyHoaDon
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.assignment,
+                    color: Colors.deepOrange,
+                  ), // Icon trạng thái đơn hàng
+                  title: Text(
+                    'Quản Lý Trạng Thái Đơn Hàng',
+                    style: TextStyle(color: Colors.deepOrange[800]),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const QuanLyTrangThaiDonHang(),
+                      ),
                     );
                   },
                 ),
@@ -385,7 +400,7 @@ class _TrangChuState extends State<TrangChu> {
               ),
             ),
             _isLoadingPopular
-                ? Center(
+                ? const Center(
                   child: CircularProgressIndicator(
                     valueColor: AlwaysStoppedAnimation<Color>(
                       Color(0xFFFFB2D9),
@@ -393,7 +408,7 @@ class _TrangChuState extends State<TrangChu> {
                   ),
                 )
                 : _mostPopularFoods.isEmpty
-                ? Center(
+                ? const Center(
                   child: Text('Không có món ăn phổ biến nào để hiển thị.'),
                 )
                 : CarouselSlider.builder(
@@ -408,7 +423,7 @@ class _TrangChuState extends State<TrangChu> {
                       builder: (BuildContext context) {
                         return Container(
                           width: MediaQuery.of(context).size.width,
-                          margin: EdgeInsets.symmetric(horizontal: 5.0),
+                          margin: const EdgeInsets.symmetric(horizontal: 5.0),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(15),
@@ -417,7 +432,7 @@ class _TrangChuState extends State<TrangChu> {
                                 color: Colors.grey.withOpacity(0.2),
                                 spreadRadius: 2,
                                 blurRadius: 5,
-                                offset: Offset(0, 3),
+                                offset: const Offset(0, 3),
                               ),
                             ],
                           ),

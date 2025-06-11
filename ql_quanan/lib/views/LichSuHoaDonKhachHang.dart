@@ -42,7 +42,7 @@ class _LichSuHoaDonKhachHangState extends State<LichSuHoaDonKhachHang> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Lịch Sử Hóa Đơn của ${widget.tenKhachHang}', // Hiển thị tên khách hàng
+          'Lịch Sử Hóa Đơn: ${widget.tenKhachHang}',
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -51,71 +51,98 @@ class _LichSuHoaDonKhachHangState extends State<LichSuHoaDonKhachHang> {
         backgroundColor: const Color(0xFFFFB2D9), // Màu hồng pastel
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      backgroundColor: const Color(0xFFFCE4EC), // Màu hồng nhạt cho nền
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _hoaDonListFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            // Hiển thị vòng tròn loading khi đang chờ dữ liệu
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            // Hiển thị thông báo lỗi nếu có lỗi
-            return Center(
-              child: Text('Lỗi khi tải lịch sử hóa đơn: ${snapshot.error}'),
-            );
+            return Center(child: Text('Lỗi: ${snapshot.error}'));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            // Hiển thị thông báo nếu không có hóa đơn nào cho khách hàng này
-            return const Center(
-              child: Text('Bạn chưa có hóa đơn nào được tạo.'),
-            );
+            return const Center(child: Text('Không có hóa đơn nào.'));
           } else {
-            // Hiển thị danh sách hóa đơn
             final hoaDonList = snapshot.data!;
             return ListView.builder(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(8.0),
               itemCount: hoaDonList.length,
               itemBuilder: (context, index) {
                 final hoaDon = hoaDonList[index];
                 return Card(
-                  elevation: 4,
                   margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  elevation: 4,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(15.0),
                   ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(15.0),
-                    leading: const Icon(
-                      Icons.receipt,
-                      color: Color(0xFFE91E63),
-                      size: 40,
-                    ),
-                    title: Text(
-                      'Mã Hóa Đơn: ${hoaDon['ma_hoa_don']}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    subtitle: Column(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 5),
-                        Text('Ngày đặt: ${hoaDon['ngay_dat']}'),
                         Text(
-                          'Tổng tiền: ${_currencyFormat.format(hoaDon['tong_tien'])}',
+                          'Mã Hóa Đơn: ${hoaDon['ma_hoa_don']}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Color(0xFFE91E63),
+                          ),
                         ),
-                        Text('Hình thức: ${hoaDon['hinh_thuc_thanh_toan']}'),
-                        Text('Ghi chú: ${hoaDon['ghi_chu'] ?? 'Không có'}'),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Mã Nhân Viên: ${hoaDon['ma_nhan_vien'] ?? 'N/A'}',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        Text(
+                          'Ngày Đặt: ${hoaDon['ngay_dat']}',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        Text(
+                          'Tổng Tiền: ${_currencyFormat.format(hoaDon['tong_tien'])}',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        Text(
+                          'Tiền Đặt Cọc: ${_currencyFormat.format(hoaDon['tien_dat_coc'])}',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        Text(
+                          'Còn Lại: ${_currencyFormat.format(hoaDon['con_lai'])}',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        Text(
+                          'Hình Thức TT: ${hoaDon['hinh_thuc_thanh_toan']}',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        Text(
+                          'Ghi Chú: ${hoaDon['ghi_chu'] ?? 'Không có'}',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        Text(
+                          'Số Bàn: ${hoaDon['so_ban'] ?? 'N/A'}',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        Text(
+                          'Trạng Thái: ${hoaDon['trang_thai'] ?? 'N/A'}',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton(
+                            onPressed:
+                                () => _showChiTietHoaDonDialog(
+                                  hoaDon['ma_hoa_don'],
+                                ),
+                            child: const Text('Xem Chi Tiết'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF6790),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    trailing: const Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.grey,
-                    ),
-                    onTap: () {
-                      // Xử lý khi người dùng nhấn vào một hóa đơn để xem chi tiết
-                      _showHoaDonDetails(context, hoaDon['ma_hoa_don']);
-                    },
                   ),
                 );
               },
@@ -126,8 +153,7 @@ class _LichSuHoaDonKhachHangState extends State<LichSuHoaDonKhachHang> {
     );
   }
 
-  // Hàm hiển thị chi tiết hóa đơn trong một dialog
-  void _showHoaDonDetails(BuildContext context, String maHoaDon) async {
+  void _showChiTietHoaDonDialog(String maHoaDon) async {
     final dbHelper = QLQuanAnDatabaseHelper.instance;
     final chiTietList = await dbHelper.getChiTietHoaDonByMaHoaDon(maHoaDon);
 
@@ -138,6 +164,9 @@ class _LichSuHoaDonKhachHangState extends State<LichSuHoaDonKhachHang> {
             title: Text('Chi Tiết Hóa Đơn: $maHoaDon'),
             content: SizedBox(
               width: double.maxFinite,
+              height:
+                  MediaQuery.of(context).size.height *
+                  0.6, // Đặt chiều cao tối đa
               child:
                   chiTietList.isEmpty
                       ? const Text('Không có chi tiết cho hóa đơn này.')

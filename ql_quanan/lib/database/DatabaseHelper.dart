@@ -23,14 +23,36 @@ class QLQuanAnDatabaseHelper {
   Future<Database> _initDatabase() async {
     String path = join(
       await getDatabasesPath(),
-      'ql_quan_an_100.db', // Đổi tên DB để đảm bảo tạo mới hoặc tăng version
+      'ql_quan_an_final.db', // Đổi tên DB để đảm bảo tạo mới
     );
     // Tăng version để cơ sở dữ liệu được tạo lại HOẶC xóa ứng dụng thủ công
     return await openDatabase(
       path,
-      version: 101,
+      version: 106, // Tăng version lên 102
       onCreate: _createDb,
-    ); // Tăng version lên 101
+      onUpgrade: _onUpgrade, // Thêm onUpgrade để xử lý nâng cấp DB
+    );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Logic nâng cấp DB nếu cần thiết
+    // Ví dụ: thêm cột mới vào bảng hiện có
+    if (oldVersion < 102) {
+      // Chỉ thêm nếu cột chưa tồn tại (cho các trường hợp nâng cấp từ phiên bản cũ)
+      // Dùng try-catch để tránh lỗi nếu cột đã có trong các lần chạy debug trước đó
+      try {
+        await db.execute('ALTER TABLE hoa_don ADD COLUMN so_ban TEXT;');
+        print('Column so_ban added to hoa_don table.');
+      } catch (e) {
+        print('Error adding so_ban column: $e');
+      }
+      try {
+        await db.execute('ALTER TABLE hoa_don ADD COLUMN trang_thai TEXT;');
+        print('Column trang_thai added to hoa_don table.');
+      } catch (e) {
+        print('Error adding trang_thai column: $e');
+      }
+    }
   }
 
   Future<void> _createDb(Database db, int version) async {
@@ -109,7 +131,7 @@ class QLQuanAnDatabaseHelper {
       )
     ''');
 
-    // Bảng hoa_don
+    // Bảng hoa_don (Đã thêm so_ban và trang_thai)
     await db.execute('''
       CREATE TABLE hoa_don (
         ma_hoa_don NVARCHAR(15) NOT NULL PRIMARY KEY,
@@ -121,6 +143,8 @@ class QLQuanAnDatabaseHelper {
         con_lai REAL,
         hinh_thuc_thanh_toan TEXT,
         ghi_chu TEXT,
+        so_ban TEXT,       -- Cột mới
+        trang_thai TEXT,   -- Cột mới
         FOREIGN KEY (ma_khach_hang) REFERENCES khach_hang (ma_khach_hang),
         FOREIGN KEY (ma_nhan_vien) REFERENCES nhan_vien (ma_nhan_vien)
       )
@@ -465,5 +489,42 @@ class QLQuanAnDatabaseHelper {
     return await db.delete('mon_an', where: 'ma_mon = ?', whereArgs: [maMon]);
   }
 
-  // Trong QLQuanAnDatabaseHelper
+  // Phương thức cập nhật trạng thái hóa đơn
+  Future<void> updateHoaDonStatus(String maHoaDon, String newStatus) async {
+    final db = await database;
+    await db.update(
+      'hoa_don',
+      {'trang_thai': newStatus},
+      where: 'ma_hoa_don = ?',
+      whereArgs: [maHoaDon],
+    );
+    print('Updated HoaDon $maHoaDon status to: $newStatus');
+  }
+
+  // Lấy hóa đơn kèm trạng thái và số bàn
+  Future<List<Map<String, dynamic>>> getAllHoaDonWithDetails() async {
+    final db = await database;
+    // Lấy TẤT CẢ các cột từ bảng hoa_don
+    // Đảm bảo rằng ma_khach_hang và ma_nhan_vien là các cột trong bảng hoa_don
+    final List<Map<String, dynamic>> maps = await db.query('hoa_don');
+
+    return List.generate(maps.length, (i) {
+      return {
+        'ma_hoa_don': maps[i]['ma_hoa_don'],
+        'ma_khach_hang':
+            maps[i]['ma_khach_hang'], // Đảm bảo cột này tồn tại và được lấy
+        'ma_nhan_vien':
+            maps[i]['ma_nhan_vien'], // Đảm bảo cột này tồn tại và được lấy
+        'ngay_dat': maps[i]['ngay_dat'],
+        'tong_tien': maps[i]['tong_tien'],
+        'tien_dat_coc': maps[i]['tien_dat_coc'],
+        'con_lai': maps[i]['con_lai'],
+        'hinh_thuc_thanh_toan': maps[i]['hinh_thuc_thanh_toan'],
+        'ghi_chu': maps[i]['ghi_chu'],
+        'so_ban': maps[i]['so_ban'],
+        'trang_thai': maps[i]['trang_thai'],
+        // Thêm bất kỳ trường nào khác bạn cần ở đây
+      };
+    });
+  }
 }

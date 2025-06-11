@@ -80,7 +80,7 @@ class _ChiTietMonAnState extends State<ChiTietMonAn>
             'Đã thêm vào giỏ hàng thành công!',
             style: TextStyle(color: Colors.white),
           ),
-          duration: Duration(seconds: 1),
+          duration: Duration(milliseconds: 100), // Sửa ở đây
           backgroundColor: Color(0xFFFF4081),
         ),
       );
@@ -378,26 +378,7 @@ class _ChiTietMonAnState extends State<ChiTietMonAn>
                               ),
                             ),
                           ),
-                          ElevatedButton(
-                            onPressed: () {
-                              print('Mua ngay: ${monAn!.maMon}');
-                              // TODO: Logic mua ngay (có thể điều hướng đến trang thanh toán với món này)
-                            },
-                            child: Text(
-                              'Mua ngay',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
-                              ),
-                            ),
-                          ),
+
                         ],
                       ),
                     ),
