@@ -154,26 +154,16 @@ class QLQuanAnDatabaseHelper {
     );
   }
 
-  // Phương thức để lấy mã hóa đơn tiếp theo
+  // Trong QLQuanAnDatabaseHelper
   Future<int> getNextHoaDonId() async {
     final db = await database;
-    final List<Map<String, dynamic>> result = await db.query(
-      'hoa_don',
-      columns: ['ma_hoa_don'],
-      orderBy: 'ma_hoa_don DESC', // Sắp xếp giảm dần để lấy mã lớn nhất
-      limit: 1,
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      "SELECT MAX(CAST(SUBSTR(ma_hoa_don, 3) AS INTEGER)) as max_id FROM hoa_don",
     );
-
-    if (result.isNotEmpty) {
-      final lastMaHoaDon = result.first['ma_hoa_don'] as String;
-      // Trích xuất phần số từ chuỗi mã hóa đơn (ví dụ: "HD001" -> 1)
-      final lastNumberString = lastMaHoaDon.replaceAll(RegExp(r'HD'), '');
-      final lastNumber = int.tryParse(lastNumberString);
-      if (lastNumber != null) {
-        return lastNumber + 1;
-      }
-    }
-    return 1; // Bắt đầu từ 1 nếu chưa có hóa đơn nào
+    int maxId =
+        result.first['max_id'] ??
+        0; // If no records, max_id is null, default to 0
+    return maxId + 1;
   }
 
   // Phương thức mới: Lấy tất cả các hóa đơn
@@ -474,4 +464,6 @@ class QLQuanAnDatabaseHelper {
     print('DBG: Deleting MonAn: $maMon');
     return await db.delete('mon_an', where: 'ma_mon = ?', whereArgs: [maMon]);
   }
+
+  // Trong QLQuanAnDatabaseHelper
 }

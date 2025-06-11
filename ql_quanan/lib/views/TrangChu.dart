@@ -266,41 +266,41 @@ class _TrangChuState extends State<TrangChu> {
                 },
               ),
               // HIỂN THỊ LỊCH SỬ HÓA ĐƠN CHO KHÁCH HÀNG
-              // if (isCustomer && user?.maVaiTro == 'KH') ...[
-              //   const Divider(color: Color(0xFFFFB2D9)),
-              //   ListTile(
-              //     leading: const Icon(
-              //       Icons.history,
-              //       color: Colors.blue,
-              //     ), // Icon lịch sử
-              //     title: Text(
-              //       'Lịch Sử Hóa Đơn',
-              //       style: TextStyle(color: Colors.blue[800]),
-              //     ),
-              //     // START: Vị trí của đoạn code bạn hỏi
-              //     onTap: () async {
-              //       Navigator.pop(context);
-              //       // Lấy tên khách hàng để truyền vào trang lịch sử hóa đơn
-              //       final khachHangData = await QLQuanAnDatabaseHelper.instance
-              //           .getKhachHangByMa(user!.maLienQuan!);
-              //       final tenKhachHang =
-              //           khachHangData?['ten_khach_hang'] ?? user.tenDangNhap;
+              if (isCustomer && user?.maVaiTro == 'KH') ...[
+                const Divider(color: Color(0xFFFFB2D9)),
+                ListTile(
+                  leading: const Icon(
+                    Icons.history,
+                    color: Colors.blue,
+                  ), // Icon lịch sử
+                  title: Text(
+                    'Lịch Sử Hóa Đơn',
+                    style: TextStyle(color: Colors.blue[800]),
+                  ),
+                  // START: Vị trí của đoạn code bạn hỏi
+                  onTap: () async {
+                    Navigator.pop(context);
+                    // Lấy tên khách hàng để truyền vào trang lịch sử hóa đơn
+                    final khachHangData = await QLQuanAnDatabaseHelper.instance
+                        .getKhachHangByMa(user!.maLienQuan!);
+                    final tenKhachHang =
+                        khachHangData?['ten_khach_hang'] ?? user.tenDangNhap;
 
-              //       Navigator.push(
-              //         context,
-              //         MaterialPageRoute(
-              //           builder:
-              //               (context) => LichSuHoaDonKhachHang(
-              //                 maKhachHang:
-              //                     user.maLienQuan!, // <-- TRUYỀN MA_KHÁCH_HÀNG VÀO ĐÂY
-              //                 tenKhachHang: tenKhachHang,
-              //               ),
-              //         ),
-              //       );
-              //     },
-              //     // END: Vị trí của đoạn code bạn hỏi
-              //   ),
-              // ],
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => LichSuHoaDonKhachHang(
+                              maKhachHang:
+                                  user.maLienQuan!, // <-- TRUYỀN MA_KHÁCH_HÀNG VÀO ĐÂY
+                              tenKhachHang: tenKhachHang,
+                            ),
+                      ),
+                    );
+                  },
+                  // END: Vị trí của đoạn code bạn hỏi
+                ),
+              ],
               // HIỂN THỊ MỤC QUẢN LÝ HÓA ĐƠN CHO NHÂN VIÊN VÀ QUẢN LÝ
               if (isEmployeeOrManager) ...[
                 // <--- Đã sửa điều kiện về đúng `isEmployeeOrManager`

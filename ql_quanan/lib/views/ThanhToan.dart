@@ -3,11 +3,17 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../controllers/CartController.dart'; // Import CartController
 import '../database/DatabaseHelper.dart'; // Import DatabaseHelper để tương tác với DB
+import '../models/User.dart'; // Import User model
+import '../models/KhachHang.dart'; // Import KhachHang model
+import '../models/NhanVien.dart'; // Import NhanVien model
+import '../controllers/AuthController.dart'; // Import AuthController
 
 // Enum để định nghĩa các phương thức thanh toán
 enum PaymentMethod { cash, qrCode, card }
 
 class ThanhToan extends StatefulWidget {
+  const ThanhToan({Key? key}) : super(key: key); // Add const keyword and Key
+
   @override
   _ThanhToanState createState() => _ThanhToanState();
 }
@@ -22,6 +28,44 @@ class _ThanhToanState extends State<ThanhToan> {
   final TextEditingController _cvvController = TextEditingController();
   final TextEditingController _cardHolderNameController =
       TextEditingController();
+
+  User? _currentUser;
+  String? _maKhachHang; // Mã khách hàng thực tế từ người dùng đăng nhập
+  String?
+  _maNhanVien; // Mã nhân viên thực tế (tạm thời, có thể cần lấy từ AuthController)
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo(); // Load user info when the widget initializes
+  }
+
+  // Function to load user information for populating maKhachHang/maNhanVien
+  Future<void> _loadUserInfo() async {
+    _currentUser =
+        Provider.of<AuthController>(context, listen: false).currentUser;
+
+    if (_currentUser != null) {
+      if (_currentUser!.maVaiTro == 'KH' && _currentUser!.maLienQuan != null) {
+        _maKhachHang = _currentUser!.maLienQuan;
+      } else if ((_currentUser!.maVaiTro == 'NV' ||
+              _currentUser!.maVaiTro == 'QL') &&
+          _currentUser!.maLienQuan != null) {
+        // If a staff/manager is logged in, they are likely the one processing, or we need a default customer
+        // For simplicity, if an NV/QL is logged in, we'll assign a default customer ID,
+        // or you can implement a customer selection mechanism.
+        // For now, if NV/QL logs in, payment will be linked to a default customer.
+        // You'll need to modify this logic if you want NV/QL to select a customer for the order.
+        _maKhachHang = 'KH01'; // Default customer for staff/manager orders
+        _maNhanVien = _currentUser!.maLienQuan;
+      }
+    } else {
+      // If no user is logged in, use default IDs or handle as anonymous.
+      _maKhachHang = 'KH01'; // Fallback to a default customer
+      _maNhanVien = 'NV01'; // Fallback to a default employee
+    }
+    setState(() {}); // Update the UI after loading user info
+  }
 
   @override
   void dispose() {
@@ -94,6 +138,13 @@ class _ThanhToanState extends State<ThanhToan> {
                               width: 50,
                               height: 50,
                               fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.broken_image,
+                                  size: 50,
+                                  color: Colors.grey,
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -151,43 +202,62 @@ class _ThanhToanState extends State<ThanhToan> {
                 color: Color(0xFFE91E63),
               ),
             ),
-            // Các tùy chọn chọn phương thức thanh toán
-            Column(
-              children: [
-                RadioListTile<PaymentMethod>(
-                  title: const Text('Tiền mặt'),
-                  value: PaymentMethod.cash,
-                  groupValue: _selectedPaymentMethod,
-                  onChanged: (PaymentMethod? value) {
-                    setState(() {
-                      _selectedPaymentMethod = value!;
-                    });
-                  },
-                  activeColor: Color(0xFFE91E63), // Màu chủ đạo
+            const SizedBox(height: 10), // Added some space
+            // Bọc phần chọn phương thức thanh toán trong Card để dễ nhìn hơn
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Column(
+                  children: [
+                    RadioListTile<PaymentMethod>(
+                      title: const Text('Tiền mặt'),
+                      value: PaymentMethod.cash,
+                      groupValue: _selectedPaymentMethod,
+                      onChanged: (PaymentMethod? value) {
+                        setState(() {
+                          _selectedPaymentMethod = value!;
+                          debugPrint(
+                            'Selected Payment Method: $_selectedPaymentMethod',
+                          ); // Debug print
+                        });
+                      },
+                      activeColor: const Color(0xFFE91E63), // Màu chủ đạo
+                    ),
+                    RadioListTile<PaymentMethod>(
+                      title: const Text('Chuyển khoản quét mã QR'),
+                      value: PaymentMethod.qrCode,
+                      groupValue: _selectedPaymentMethod,
+                      onChanged: (PaymentMethod? value) {
+                        setState(() {
+                          _selectedPaymentMethod = value!;
+                          debugPrint(
+                            'Selected Payment Method: $_selectedPaymentMethod',
+                          ); // Debug print
+                        });
+                      },
+                      activeColor: const Color(0xFFE91E63),
+                    ),
+                    RadioListTile<PaymentMethod>(
+                      title: const Text('Thẻ Tín dụng/Ghi nợ'),
+                      value: PaymentMethod.card,
+                      groupValue: _selectedPaymentMethod,
+                      onChanged: (PaymentMethod? value) {
+                        setState(() {
+                          _selectedPaymentMethod = value!;
+                          debugPrint(
+                            'Selected Payment Method: $_selectedPaymentMethod',
+                          ); // Debug print
+                        });
+                      },
+                      activeColor: const Color(0xFFE91E63),
+                    ),
+                  ],
                 ),
-                RadioListTile<PaymentMethod>(
-                  title: const Text('Chuyển khoản quét mã QR'),
-                  value: PaymentMethod.qrCode,
-                  groupValue: _selectedPaymentMethod,
-                  onChanged: (PaymentMethod? value) {
-                    setState(() {
-                      _selectedPaymentMethod = value!;
-                    });
-                  },
-                  activeColor: Color(0xFFE91E63),
-                ),
-                RadioListTile<PaymentMethod>(
-                  title: const Text('Thẻ Tín dụng/Ghi nợ'),
-                  value: PaymentMethod.card,
-                  groupValue: _selectedPaymentMethod,
-                  onChanged: (PaymentMethod? value) {
-                    setState(() {
-                      _selectedPaymentMethod = value!;
-                    });
-                  },
-                  activeColor: Color(0xFFE91E63),
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 20),
             // Hiển thị chi tiết phương thức thanh toán dựa trên lựa chọn
@@ -202,7 +272,10 @@ class _ThanhToanState extends State<ThanhToan> {
                   _processPayment(context, cartController);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red, // Màu nút thanh toán
+                  backgroundColor: const Color(
+                    0xFFFF6790,
+                  ), // Màu nút thanh toán hồng đậm
+                  foregroundColor: Colors.white, // Màu chữ trên nút
                   padding: const EdgeInsets.symmetric(vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15), // Bo tròn nút
@@ -227,6 +300,9 @@ class _ThanhToanState extends State<ThanhToan> {
         return Card(
           elevation: 2,
           color: Colors.yellow[50], // Nền màu vàng nhạt cho thông báo
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: const Padding(
             padding: EdgeInsets.all(16.0),
             child: Row(
@@ -251,6 +327,9 @@ class _ThanhToanState extends State<ThanhToan> {
         return Card(
           elevation: 2,
           color: Colors.blue[50], // Nền màu xanh nhạt cho thông tin QR
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -317,6 +396,9 @@ class _ThanhToanState extends State<ThanhToan> {
         return Card(
           elevation: 2,
           color: Colors.green[50], // Nền màu xanh lá nhạt cho thông tin thẻ
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -580,6 +662,8 @@ class _ThanhToanState extends State<ThanhToan> {
     final dbHelper = QLQuanAnDatabaseHelper.instance;
     try {
       // Generate a unique invoice ID
+      // This is where the issue might be. We need to ensure getNextHoaDonId()
+      // provides a genuinely new, incremented ID each time it's called.
       final nextInvoiceNumber = await dbHelper.getNextHoaDonId();
       final maHoaDon =
           'HD${nextInvoiceNumber.toString().padLeft(3, '0')}'; // Ví dụ: HD001, HD002
@@ -587,10 +671,10 @@ class _ThanhToanState extends State<ThanhToan> {
       // Lấy ngày hiện tại
       final ngayDat = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-      // Mã khách hàng và nhân viên (đặt tạm thời)
-      // Trong ứng dụng thực tế, bạn sẽ lấy từ dữ liệu người dùng đã đăng nhập hoặc lựa chọn
-      final maKhachHang = 'KH01'; // Ví dụ, cần thay bằng mã khách hàng thực tế
-      final maNhanVien = 'NV01'; // Ví dụ, cần thay bằng mã nhân viên thực tế
+      // Mã khách hàng và nhân viên
+      // Cần lấy từ _maKhachHang và _maNhanVien đã được load từ AuthController
+      final maKhachHangFinal = _maKhachHang ?? 'KH01'; // Fallback if not set
+      final maNhanVienFinal = _maNhanVien ?? 'NV01'; // Fallback if not set
 
       final tongTien = cartController.getTotalPrice();
       final hinhThucThanhToan =
@@ -603,8 +687,8 @@ class _ThanhToanState extends State<ThanhToan> {
       // Chuẩn bị dữ liệu cho bảng hoa_don
       final hoaDonData = {
         'ma_hoa_don': maHoaDon,
-        'ma_khach_hang': maKhachHang,
-        'ma_nhan_vien': maNhanVien,
+        'ma_khach_hang': maKhachHangFinal,
+        'ma_nhan_vien': maNhanVienFinal,
         'ngay_dat': ngayDat,
         'tong_tien': tongTien,
         'tien_dat_coc': tongTien, // Giả định thanh toán đủ tiền
