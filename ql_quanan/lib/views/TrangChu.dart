@@ -3,16 +3,20 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:provider/provider.dart';
+import 'package:ql_quanan/views/admin/QuanLyHoaDonPage.dart';
 import '../controllers/AuthController.dart';
 import '../controllers/MonAnController.dart';
 import '../controllers/CartController.dart';
 import '../models/MonAn.dart';
+import '../database/DatabaseHelper.dart'; // Import DatabaseHelper để lấy thông tin khách hàng/nhân viên
 import 'DanhSachMonAn.dart';
 import 'GioHang.dart';
 import 'ThongTinCaNhan.dart';
 import 'TrangLienHe.dart';
 import 'auth/DangNhap.dart';
-import 'admin/AdminDashboard.dart'; // IMPORT TRANG DASHBOARD ADMIN MỚI
+import 'admin/AdminDashboard.dart';
+import 'admin/QuanLyHoaDonPage.dart'; // Import trang quản lý hóa đơn cho quản lý/nhân viên
+import 'LichSuHoaDonKhachHang.dart'; // Import trang lịch sử hóa đơn cho khách hàng
 
 class TrangChu extends StatefulWidget {
   @override
@@ -35,30 +39,60 @@ class _TrangChuState extends State<TrangChu> {
       _isLoadingPopular = true;
     });
     _mostPopularFoods = await _monAnController.fetchAllMonAn();
+    // Sắp xếp giảm dần theo đơn giá để lấy món phổ biến nhất
     _mostPopularFoods.sort((a, b) => b.donGia!.compareTo(a.donGia!));
-    _mostPopularFoods = _mostPopularFoods.take(5).toList();
+    _mostPopularFoods =
+        _mostPopularFoods.take(5).toList(); // Lấy 5 món phổ biến nhất
     setState(() {
       _isLoadingPopular = false;
     });
+  }
+
+  // Hàm để lấy đường dẫn ảnh dựa trên vai trò và mã liên quan
+  Future<String> _getUserImagePath(String? maVaiTro, String? maLienQuan) async {
+    final dbHelper = QLQuanAnDatabaseHelper.instance;
+    String defaultPath =
+        'assets/HinhAnh/default_avatar.jpg'; // Ảnh mặc định chung
+
+    if (maLienQuan == null) return defaultPath;
+
+    if (maVaiTro == 'KH') {
+      final khachHang = await dbHelper.getKhachHangByMa(maLienQuan);
+      if (khachHang != null && khachHang['hinh_anh'] != null) {
+        return 'assets/HinhAnh/KhachHang/${khachHang['hinh_anh']}';
+      }
+    } else if (maVaiTro == 'NV' || maVaiTro == 'QL') {
+      final nhanVien = await dbHelper.getNhanVienByMa(maLienQuan);
+      if (nhanVien != null && nhanVien['hinh_anh'] != null) {
+        return 'assets/HinhAnh/NhanVien/${nhanVien['hinh_anh']}';
+      }
+    }
+    return defaultPath;
   }
 
   @override
   Widget build(BuildContext context) {
     final authController = Provider.of<AuthController>(context);
     final user = authController.currentUser;
-    // Kiểm tra nếu người dùng là quản lý
+
+    // Kiểm tra vai trò của người dùng
+    final bool isCustomer = user != null && user.maVaiTro == 'KH';
+    final bool isEmployeeOrManager =
+        user != null && (user.maVaiTro == 'NV' || user.maVaiTro == 'QL');
     final bool isAdmin = user != null && user.maVaiTro == 'QL';
 
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
-            CircleAvatar(
+            const CircleAvatar(
               radius: 20,
-              backgroundImage: AssetImage('assets/HinhAnh/Logo.jpg'),
+              backgroundImage: AssetImage(
+                'assets/HinhAnh/Logo.jpg',
+              ), // Logo quán ăn
             ),
-            SizedBox(width: 10),
-            Text(
+            const SizedBox(width: 10),
+            const Text(
               'Quán Ăn Ngon',
               style: TextStyle(
                 color: Colors.white,
@@ -67,13 +101,13 @@ class _TrangChuState extends State<TrangChu> {
             ),
           ],
         ),
-        backgroundColor: Color(0xFFFFB2D9),
-        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: const Color(0xFFFFB2D9),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           Stack(
             children: [
               IconButton(
-                icon: Icon(Icons.shopping_cart, color: Colors.white),
+                icon: const Icon(Icons.shopping_cart, color: Colors.white),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -89,18 +123,21 @@ class _TrangChuState extends State<TrangChu> {
                     return Visibility(
                       visible: cart.totalItems > 0,
                       child: Container(
-                        padding: EdgeInsets.all(2),
+                        padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           color: Colors.red,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        constraints: BoxConstraints(
+                        constraints: const BoxConstraints(
                           minWidth: 16,
                           minHeight: 16,
                         ),
                         child: Text(
                           '${cart.totalItems}',
-                          style: TextStyle(color: Colors.white, fontSize: 10),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -112,34 +149,46 @@ class _TrangChuState extends State<TrangChu> {
           ),
         ],
       ),
-      backgroundColor: Color(0xFFFCE4EC),
+      backgroundColor: const Color(0xFFFCE4EC),
       drawer: Drawer(
         child: Container(
-          color: Colors.pink[50],
+          color: Colors.pink[50], // Màu nền hồng nhạt cho Drawer
           child: ListView(
             padding: EdgeInsets.zero,
             children: <Widget>[
+              // Header của Drawer
               DrawerHeader(
-                decoration: BoxDecoration(color: Color(0xFFFFB2D9)),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFB2D9),
+                ), // Màu hồng pastel
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundColor: Colors.white,
-                      // TODO: Thay bằng ảnh người dùng thực tế từ DB
-                      // Dựa vào maVaiTro để chọn ảnh mặc định hoặc load ảnh của user
-                      backgroundImage: AssetImage(
-                        user?.maVaiTro == 'QL'
-                            ? 'assets/HinhAnh/KhachHang/hinh1.jpg'
-                            : user?.maVaiTro == 'NV'
-                            ? 'assets/HinhAnh/KhachHang/hinh1.jpg'
-                            : 'assets/HinhAnh/KhachHang/hinh1.jpg', // Default cho khách hàng
+                    FutureBuilder<String>(
+                      future: _getUserImagePath(
+                        user?.maVaiTro,
+                        user?.maLienQuan,
                       ),
+                      builder: (context, snapshot) {
+                        String imagePath =
+                            snapshot.data ??
+                            'assets/HinhAnh/default_avatar.jpg'; // Default nếu không có
+                        return CircleAvatar(
+                          radius: 40,
+                          backgroundColor: Colors.white,
+                          backgroundImage: AssetImage(imagePath),
+                          onBackgroundImageError: (exception, stackTrace) {
+                            // Fallback to a default image if the specified image doesn't load
+                            setState(() {
+                              imagePath = 'assets/HinhAnh/default_avatar.jpg';
+                            });
+                          },
+                        );
+                      },
                     ),
                     Text(
                       user?.tenDangNhap ?? 'Khách',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -147,13 +196,17 @@ class _TrangChuState extends State<TrangChu> {
                     ),
                     Text(
                       user?.email ?? 'Chưa đăng nhập',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
               ),
+              // Các mục điều hướng chung
               ListTile(
-                leading: Icon(Icons.home, color: Color(0xFFE91E63)),
+                leading: const Icon(Icons.home, color: Color(0xFFE91E63)),
                 title: Text(
                   'Trang Chủ',
                   style: TextStyle(color: Colors.pink[800]),
@@ -163,7 +216,10 @@ class _TrangChuState extends State<TrangChu> {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.restaurant_menu, color: Color(0xFFE91E63)),
+                leading: const Icon(
+                  Icons.restaurant_menu,
+                  color: Color(0xFFE91E63),
+                ),
                 title: Text(
                   'Thực Đơn',
                   style: TextStyle(color: Colors.pink[800]),
@@ -179,7 +235,10 @@ class _TrangChuState extends State<TrangChu> {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.contact_mail, color: Color(0xFFE91E63)),
+                leading: const Icon(
+                  Icons.contact_mail,
+                  color: Color(0xFFE91E63),
+                ),
                 title: Text(
                   'Liên Hệ',
                   style: TextStyle(color: Colors.pink[800]),
@@ -193,7 +252,7 @@ class _TrangChuState extends State<TrangChu> {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.person, color: Color(0xFFE91E63)),
+                leading: const Icon(Icons.person, color: Color(0xFFE91E63)),
                 title: Text(
                   'Thông tin cá nhân',
                   style: TextStyle(color: Colors.pink[800]),
@@ -206,11 +265,71 @@ class _TrangChuState extends State<TrangChu> {
                   );
                 },
               ),
-              // HIỂN THỊ CÁC MỤC QUẢN LÝ CHỈ KHI LÀ ADMIN
-              if (isAdmin) ...[
-                Divider(color: Colors.pink[200]),
+              // HIỂN THỊ LỊCH SỬ HÓA ĐƠN CHO KHÁCH HÀNG
+              // if (isCustomer && user?.maVaiTro == 'KH') ...[
+              //   const Divider(color: Color(0xFFFFB2D9)),
+              //   ListTile(
+              //     leading: const Icon(
+              //       Icons.history,
+              //       color: Colors.blue,
+              //     ), // Icon lịch sử
+              //     title: Text(
+              //       'Lịch Sử Hóa Đơn',
+              //       style: TextStyle(color: Colors.blue[800]),
+              //     ),
+              //     // START: Vị trí của đoạn code bạn hỏi
+              //     onTap: () async {
+              //       Navigator.pop(context);
+              //       // Lấy tên khách hàng để truyền vào trang lịch sử hóa đơn
+              //       final khachHangData = await QLQuanAnDatabaseHelper.instance
+              //           .getKhachHangByMa(user!.maLienQuan!);
+              //       final tenKhachHang =
+              //           khachHangData?['ten_khach_hang'] ?? user.tenDangNhap;
+
+              //       Navigator.push(
+              //         context,
+              //         MaterialPageRoute(
+              //           builder:
+              //               (context) => LichSuHoaDonKhachHang(
+              //                 maKhachHang:
+              //                     user.maLienQuan!, // <-- TRUYỀN MA_KHÁCH_HÀNG VÀO ĐÂY
+              //                 tenKhachHang: tenKhachHang,
+              //               ),
+              //         ),
+              //       );
+              //     },
+              //     // END: Vị trí của đoạn code bạn hỏi
+              //   ),
+              // ],
+              // HIỂN THỊ MỤC QUẢN LÝ HÓA ĐƠN CHO NHÂN VIÊN VÀ QUẢN LÝ
+              if (isEmployeeOrManager) ...[
+                // <--- Đã sửa điều kiện về đúng `isEmployeeOrManager`
+                const Divider(color: Color(0xFFFFB2D9)),
                 ListTile(
-                  leading: Icon(
+                  leading: const Icon(
+                    Icons.description,
+                    color: Colors.purple,
+                  ), // Icon hóa đơn
+                  title: Text(
+                    'Quản Lý Hóa Đơn',
+                    style: TextStyle(color: Colors.purple[800]),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => QuanLyHoaDonPage(),
+                      ), // <--- Điều hướng đến QuanLyHoaDon
+                    );
+                  },
+                ),
+              ],
+              // HIỂN THỊ CÁC MỤC QUẢN LÝ KHÁC CHỈ KHI LÀ ADMIN
+              if (isAdmin) ...[
+                const Divider(color: Color(0xFFFFB2D9)),
+                ListTile(
+                  leading: const Icon(
                     Icons.admin_panel_settings,
                     color: Colors.deepPurple,
                   ),
@@ -229,47 +348,14 @@ class _TrangChuState extends State<TrangChu> {
                     );
                   },
                 ),
-                // Có thể thêm từng mục nhỏ nếu muốn, hoặc chỉ đưa vào Dashboard
-                /*
-                ListTile(
-                  leading: Icon(Icons.people_alt, color: Colors.deepPurple),
-                  title: Text('Quản Lý Nhân Viên', style: TextStyle(color: Colors.deepPurple[800])),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => QuanLyNhanVienPage()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.group, color: Colors.deepPurple),
-                  title: Text('Quản Lý Khách Hàng', style: TextStyle(color: Colors.deepPurple[800])),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => QuanLyKhachHangPage()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.restaurant, color: Colors.deepPurple),
-                  title: Text('Quản Lý Món Ăn', style: TextStyle(color: Colors.deepPurple[800])),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => QuanLyMonAnPage()),
-                    );
-                  },
-                ),
-                */
               ],
-              Divider(color: Colors.pink[200]),
+              const Divider(color: Color(0xFFFFB2D9)),
               ListTile(
-                leading: Icon(Icons.logout, color: Colors.red),
-                title: Text('Đăng Xuất', style: TextStyle(color: Colors.red)),
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text(
+                  'Đăng Xuất',
+                  style: TextStyle(color: Colors.red),
+                ),
                 onTap: () {
                   authController.logout();
                   Navigator.pushAndRemoveUntil(
@@ -339,7 +425,7 @@ class _TrangChuState extends State<TrangChu> {
                             children: [
                               Expanded(
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.vertical(
+                                  borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(15),
                                   ),
                                   child: Image.asset(
@@ -348,7 +434,9 @@ class _TrangChuState extends State<TrangChu> {
                                     width: double.infinity,
                                     errorBuilder:
                                         (context, error, stackTrace) =>
-                                            Center(child: Text('No Image')),
+                                            const Center(
+                                              child: Text('Không có hình ảnh'),
+                                            ),
                                   ),
                                 ),
                               ),
@@ -356,7 +444,7 @@ class _TrangChuState extends State<TrangChu> {
                                 padding: const EdgeInsets.all(8.0),
                                 child: Text(
                                   monAn.tenMon,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -376,11 +464,13 @@ class _TrangChuState extends State<TrangChu> {
                     aspectRatio: 16 / 9,
                     autoPlayCurve: Curves.fastOutSlowIn,
                     enableInfiniteScroll: true,
-                    autoPlayAnimationDuration: Duration(milliseconds: 800),
+                    autoPlayAnimationDuration: const Duration(
+                      milliseconds: 800,
+                    ),
                     viewportFraction: 0.8,
                   ),
                 ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
@@ -392,7 +482,7 @@ class _TrangChuState extends State<TrangChu> {
                 ),
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Center(
@@ -405,15 +495,18 @@ class _TrangChuState extends State<TrangChu> {
                       ),
                     );
                   },
-                  icon: Icon(Icons.menu_book),
-                  label: Text('Xem Toàn Bộ Thực Đơn'),
+                  icon: const Icon(Icons.menu_book),
+                  label: const Text('Xem Toàn Bộ Thực Đơn'),
                   style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 25,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
           ],
         ),
       ),

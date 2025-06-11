@@ -5,6 +5,7 @@ import '../auth/DangNhap.dart'; // Import DangNhap nếu cần
 import 'QuanLyNhanVienPage.dart';
 import 'QuanLyKhachHangPage.dart';
 import 'QuanLyMonAnPage.dart';
+import 'QuanLyHoaDonPage.dart'; // Import trang quản lý hóa đơn
 // import các trang quản lý khác nếu có
 
 class AdminDashboard extends StatelessWidget {
@@ -97,6 +98,24 @@ class AdminDashboard extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => QuanLyMonAnPage()),
+                  );
+                },
+              ),
+            ),
+            Card(
+              elevation: 4,
+              margin: EdgeInsets.only(bottom: 16),
+              child: ListTile(
+                leading: Icon(Icons.receipt, color: Colors.blueAccent),
+                title: Text(
+                  'Quản Lý Hóa Đơn',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                trailing: Icon(Icons.arrow_forward_ios),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => QuanLyHoaDonPage()),
                   );
                 },
               ),

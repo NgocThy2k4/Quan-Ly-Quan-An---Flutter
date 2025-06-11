@@ -1,5 +1,3 @@
-// database/DatabaseHelper.dart (CẬP NHẬT VÀ TỐI ƯU)
-
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'InsertData.dart'; // Đường dẫn đúng
@@ -25,10 +23,14 @@ class QLQuanAnDatabaseHelper {
   Future<Database> _initDatabase() async {
     String path = join(
       await getDatabasesPath(),
-      'ql_quan_an_final.db',
-    ); // Đổi tên DB để đảm bảo tạo mới
+      'ql_quan_an_100.db', // Đổi tên DB để đảm bảo tạo mới hoặc tăng version
+    );
     // Tăng version để cơ sở dữ liệu được tạo lại HOẶC xóa ứng dụng thủ công
-    return await openDatabase(path, version: 102, onCreate: _createDb);
+    return await openDatabase(
+      path,
+      version: 101,
+      onCreate: _createDb,
+    ); // Tăng version lên 101
   }
 
   Future<void> _createDb(Database db, int version) async {
@@ -40,20 +42,20 @@ class QLQuanAnDatabaseHelper {
       )
     ''');
 
-    // Bảng nguoi_dung (Thêm cột ma_lien_quan để lưu mã nhân viên/khách hàng)
+    // Bảng nguoi_dung (KHÔNG CÓ CỘT hinh_anh ở đây)
     await db.execute('''
       CREATE TABLE nguoi_dung (
         ma_nguoi_dung NVARCHAR(15) NOT NULL PRIMARY KEY,
         ten_dang_nhap NVARCHAR(50) NOT NULL UNIQUE,
-        mat_khau NVARCHAR(255) NOT NULL, -- ĐẢM BẢO NOT NULL
+        mat_khau NVARCHAR(255) NOT NULL,
         email NVARCHAR(100) UNIQUE NOT NULL,
         ma_vai_tro NVARCHAR(15) NOT NULL,
-        ma_lien_quan NVARCHAR(15), -- Có thể NULL nếu muốn, nhưng hiện tại bạn đang gán giá trị
+        ma_lien_quan NVARCHAR(15),
         FOREIGN KEY (ma_vai_tro) REFERENCES vai_tro(ma_vai_tro)
       )
     ''');
 
-    // Bảng nhan_vien (Đã có sẵn, không thay đổi)
+    // Bảng nhan_vien
     await db.execute('''
       CREATE TABLE nhan_vien (
         ma_nhan_vien NVARCHAR(15) NOT NULL PRIMARY KEY,
@@ -66,7 +68,7 @@ class QLQuanAnDatabaseHelper {
       )
     ''');
 
-    // Bảng khach_hang (Đã có sẵn, không thay đổi)
+    // Bảng khach_hang
     await db.execute('''
       CREATE TABLE khach_hang (
         ma_khach_hang NVARCHAR(15) NOT NULL PRIMARY KEY,
@@ -78,7 +80,7 @@ class QLQuanAnDatabaseHelper {
       )
     ''');
 
-    // Bảng loai_mon_an (Đã có sẵn, không thay đổi)
+    // Bảng loai_mon_an
     await db.execute('''
       CREATE TABLE loai_mon_an (
         ma_loai NVARCHAR(15) NOT NULL PRIMARY KEY,
@@ -88,7 +90,7 @@ class QLQuanAnDatabaseHelper {
       )
     ''');
 
-    // Bảng mon_an (Đã có sẵn, không thay đổi)
+    // Bảng mon_an
     await db.execute('''
       CREATE TABLE mon_an (
         ma_mon NVARCHAR(15) NOT NULL PRIMARY KEY,
@@ -107,7 +109,7 @@ class QLQuanAnDatabaseHelper {
       )
     ''');
 
-    // Bảng hoa_don (Đã có sẵn, không thay đổi)
+    // Bảng hoa_don
     await db.execute('''
       CREATE TABLE hoa_don (
         ma_hoa_don NVARCHAR(15) NOT NULL PRIMARY KEY,
@@ -124,7 +126,7 @@ class QLQuanAnDatabaseHelper {
       )
     ''');
 
-    // Bảng chi_tiet_hoa_don (Đã có sẵn, không thay đổi)
+    // Bảng chi_tiet_hoa_don
     await db.execute('''
       CREATE TABLE chi_tiet_hoa_don (
         ma_hoa_don NVARCHAR(15) NOT NULL,
@@ -140,6 +142,72 @@ class QLQuanAnDatabaseHelper {
 
     // Chèn dữ liệu ban đầu sau khi tạo bảng
     await insertInitialData(db);
+  }
+
+  // Phương thức chung để chèn dữ liệu vào bất kỳ bảng nào
+  Future<int> insert(String table, Map<String, dynamic> data) async {
+    final db = await database;
+    return await db.insert(
+      table,
+      data,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  // Phương thức để lấy mã hóa đơn tiếp theo
+  Future<int> getNextHoaDonId() async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'hoa_don',
+      columns: ['ma_hoa_don'],
+      orderBy: 'ma_hoa_don DESC', // Sắp xếp giảm dần để lấy mã lớn nhất
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      final lastMaHoaDon = result.first['ma_hoa_don'] as String;
+      // Trích xuất phần số từ chuỗi mã hóa đơn (ví dụ: "HD001" -> 1)
+      final lastNumberString = lastMaHoaDon.replaceAll(RegExp(r'HD'), '');
+      final lastNumber = int.tryParse(lastNumberString);
+      if (lastNumber != null) {
+        return lastNumber + 1;
+      }
+    }
+    return 1; // Bắt đầu từ 1 nếu chưa có hóa đơn nào
+  }
+
+  // Phương thức mới: Lấy tất cả các hóa đơn
+  Future<List<Map<String, dynamic>>> getAllHoaDon() async {
+    final db = await database;
+    return await db.query(
+      'hoa_don',
+      orderBy: 'ngay_dat DESC',
+    ); // Sắp xếp theo ngày đặt giảm dần
+  }
+
+  // Phương thức mới: Lấy chi tiết hóa đơn theo mã hóa đơn
+  Future<List<Map<String, dynamic>>> getChiTietHoaDonByMaHoaDon(
+    String maHoaDon,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'chi_tiet_hoa_don',
+      where: 'ma_hoa_don = ?',
+      whereArgs: [maHoaDon],
+    );
+  }
+
+  // Phương thức mới: Lấy hóa đơn theo mã khách hàng
+  Future<List<Map<String, dynamic>>> getHoaDonByMaKhachHang(
+    String maKhachHang,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'hoa_don',
+      where: 'ma_khach_hang = ?',
+      whereArgs: [maKhachHang],
+      orderBy: 'ngay_dat DESC', // Sắp xếp theo ngày đặt giảm dần
+    );
   }
 
   // --- CÁC PHƯƠNG THỨC CRUD CHO nguoi_dung ---
@@ -256,6 +324,7 @@ class QLQuanAnDatabaseHelper {
     return results.isNotEmpty ? results.first : null;
   }
 
+  // Phương thức để chèn NhanVien (đã có sẵn)
   Future<void> insertNhanVien(Map<String, dynamic> nhanVien) async {
     final db = await database;
     await db.insert(
@@ -265,6 +334,7 @@ class QLQuanAnDatabaseHelper {
     );
   }
 
+  // Phương thức để chèn KhachHang (đã có sẵn)
   Future<void> insertKhachHang(Map<String, dynamic> khachHang) async {
     final db = await database;
     await db.insert(
@@ -274,12 +344,24 @@ class QLQuanAnDatabaseHelper {
     );
   }
 
+  // Phương thức để lấy NhanVien theo mã
   Future<Map<String, dynamic>?> getNhanVienByMa(String maNhanVien) async {
     final db = await database;
     List<Map<String, dynamic>> results = await db.query(
       'nhan_vien',
       where: 'ma_nhan_vien = ?',
       whereArgs: [maNhanVien],
+    );
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  // Phương thức để lấy KhachHang theo mã
+  Future<Map<String, dynamic>?> getKhachHangByMa(String maKhachHang) async {
+    final db = await database;
+    List<Map<String, dynamic>> results = await db.query(
+      'khach_hang',
+      where: 'ma_khach_hang = ?',
+      whereArgs: [maKhachHang],
     );
     return results.isNotEmpty ? results.first : null;
   }
@@ -306,6 +388,7 @@ class QLQuanAnDatabaseHelper {
     return 1; // Bắt đầu từ 1 nếu không có
   }
 
+  // Phương thức CẬP NHẬT thông tin KhachHang
   Future<void> updateKhachHang(Map<String, dynamic> khachHang) async {
     final db = await database;
     await db.update(
@@ -334,16 +417,7 @@ class QLQuanAnDatabaseHelper {
     });
   }
 
-  Future<Map<String, dynamic>?> getKhachHangByMa(String maKhachHang) async {
-    final db = await database;
-    List<Map<String, dynamic>> results = await db.query(
-      'khach_hang',
-      where: 'ma_khach_hang = ?',
-      whereArgs: [maKhachHang],
-    );
-    return results.isNotEmpty ? results.first : null;
-  }
-
+  // Phương thức CẬP NHẬT thông tin NhanVien
   Future<void> updateNhanVien(Map<String, dynamic> nhanVien) async {
     final db = await database;
     await db.update(

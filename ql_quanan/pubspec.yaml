@@ -55,7 +55,8 @@ flutter:
     - assets/HinhAnh/NenDangNhap.jpg
     - assets/HinhAnh/NenDangKy.jpg
     - assets/HinhAnh/LienHe.jpg
-
+    - assets/HinhAnh/default_avatar.jpg
+    
     - assets/HinhAnh/KhachHang/default_user.jpg
     - assets/HinhAnh/KhachHang/default_kh.jpg
     - assets/HinhAnh/KhachHang/hinh1.jpg

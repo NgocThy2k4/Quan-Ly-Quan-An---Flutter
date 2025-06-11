@@ -134,6 +134,8 @@ class AuthController extends ChangeNotifier {
 
       String maLienQuan = '';
       String prefix = '';
+      String defaultImage =
+          'default_avatar.jpg'; // Default image for both roles
 
       if (maVaiTro == 'KH') {
         prefix = 'KH';
@@ -149,31 +151,32 @@ class AuthController extends ChangeNotifier {
           tenKhachHang: tenDangNhap,
           diaChi: '',
           dienThoai: '',
-          hinhAnh:
-              'default_customer.png', // Đảm bảo ảnh này tồn tại trong assets/HinhAnh
+          hinhAnh: defaultImage, // Use default image
           ghiChu: '',
         );
         print('Đang chèn KhachHang: ${newKhachHang.toMap()}');
         await _dbHelper.insertKhachHang(newKhachHang.toMap());
         print('Chèn KhachHang thành công.');
-      } else if (maVaiTro == 'NV') {
-        prefix = 'NV';
+      } else if (maVaiTro == 'NV' || maVaiTro == 'QL') {
+        // NV and QL will have NhanVien entry
+        prefix = 'NV'; // Prefix for NhanVien
         int nextIdNum = await _dbHelper.getNextMaNguoiDung(prefix);
         maLienQuan =
             '$prefix${nextIdNum.toString().padLeft(2, '0')}'; // VD: NV01, NV02
 
-        print('Đăng ký nhân viên. maLienQuan: $maLienQuan');
+        print('Đăng ký nhân viên/quản lý. maLienQuan: $maLienQuan');
 
         // CHÈN NHANVIEN VÀO DATABASE TRƯỚC
         NhanVien newNhanVien = NhanVien(
           maNhanVien: maLienQuan,
           tenNhanVien: tenDangNhap,
           chucVu:
-              'Nhân viên mới', // Cần thiết lập giá trị mặc định hoặc cho phép nhập
+              maVaiTro == 'QL'
+                  ? 'Quản lý mới'
+                  : 'Nhân viên mới', // Set default role based on maVaiTro
           diaChi: '',
           dienThoai: '',
-          hinhAnh:
-              'default_employee.png', // Đảm bảo ảnh này tồn tại trong assets/HinhAnh
+          hinhAnh: defaultImage, // Use default image
           ghiChu: '',
         );
         print('Đang chèn NhanVien: ${newNhanVien.toMap()}');
@@ -187,10 +190,6 @@ class AuthController extends ChangeNotifier {
         return false;
       }
 
-      // BỎ DÒNG HASH MẬT KHẨU NÀY
-      // final hashedPassword = _hashPassword(matKhau);
-      // print('Mật khẩu đã hash: $hashedPassword');
-
       // Tạo User và chèn vào database, sử dụng mật khẩu PLAIN TEXT
       User newUser = User(
         maNguoiDung:
@@ -200,6 +199,7 @@ class AuthController extends ChangeNotifier {
         email: email,
         maVaiTro: maVaiTro,
         maLienQuan: maLienQuan,
+        // hinhAnh đã được loại bỏ khỏi User model, không cần lưu vào đây
       );
       print('Đang chèn User: ${newUser.toMap()}');
       await _dbHelper.insertUser(newUser.toMap());
@@ -322,6 +322,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Cập nhật phương thức updateCurrentUser để không nhận hinhAnh
   void updateCurrentUser(User user) {
     _currentUser = user;
     notifyListeners();
