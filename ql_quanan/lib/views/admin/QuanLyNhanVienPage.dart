@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../database/DatabaseHelper.dart';
 import '../../models/NhanVien.dart';
+import '../../models/User.dart'; // Import User model
 
 class QuanLyNhanVienPage extends StatefulWidget {
   const QuanLyNhanVienPage({Key? key}) : super(key: key);
@@ -38,9 +41,6 @@ class _QuanLyNhanVienPageState extends State<QuanLyNhanVienPage> {
   }
 
   Future<void> _addOrEditNhanVien({NhanVien? nhanVien}) async {
-    final TextEditingController maNhanVienController = TextEditingController(
-      text: nhanVien?.maNhanVien,
-    );
     final TextEditingController tenNhanVienController = TextEditingController(
       text: nhanVien?.tenNhanVien,
     );
@@ -53,9 +53,10 @@ class _QuanLyNhanVienPageState extends State<QuanLyNhanVienPage> {
     final TextEditingController dienThoaiController = TextEditingController(
       text: nhanVien?.dienThoai,
     );
-    final TextEditingController hinhAnhController = TextEditingController(
-      text: nhanVien?.hinhAnh,
-    );
+    String? _pickedImagePath = nhanVien?.hinhAnh;
+    bool hasExistingImage =
+        nhanVien?.hinhAnh != null && nhanVien!.hinhAnh!.isNotEmpty;
+
     final TextEditingController ghiChuController = TextEditingController(
       text: nhanVien?.ghiChu,
     );
@@ -65,112 +66,232 @@ class _QuanLyNhanVienPageState extends State<QuanLyNhanVienPage> {
     await showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          title: Text(
-            nhanVien == null ? 'Thêm Nhân Viên Mới' : 'Sửa Nhân Viên',
-          ),
-          content: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: maNhanVienController,
-                    decoration: InputDecoration(
-                      labelText: 'Mã Nhân Viên (NVxx)',
-                    ),
-                    enabled:
-                        nhanVien == null, // Không cho phép sửa mã khi chỉnh sửa
-                    validator: (value) {
-                      if (value == null || value.isEmpty)
-                        return 'Vui lòng nhập mã nhân viên.';
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: tenNhanVienController,
-                    decoration: InputDecoration(labelText: 'Tên Nhân Viên'),
-                    validator: (value) {
-                      if (value == null || value.isEmpty)
-                        return 'Vui lòng nhập tên nhân viên.';
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: chucVuController,
-                    decoration: InputDecoration(labelText: 'Chức Vụ'),
-                  ),
-                  TextFormField(
-                    controller: diaChiController,
-                    decoration: InputDecoration(labelText: 'Địa Chỉ'),
-                  ),
-                  TextFormField(
-                    controller: dienThoaiController,
-                    decoration: InputDecoration(labelText: 'Điện Thoại'),
-                  ),
-                  TextFormField(
-                    controller: hinhAnhController,
-                    decoration: InputDecoration(
-                      labelText: 'Tên file Hình ảnh (ví dụ: image.jpg)',
-                    ),
-                  ),
-                  TextFormField(
-                    controller: ghiChuController,
-                    decoration: InputDecoration(labelText: 'Ghi Chú'),
-                  ),
-                ],
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(
+                nhanVien == null ? 'Thêm Nhân Viên Mới' : 'Sửa Nhân Viên',
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Hủy'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (_formKey.currentState!.validate()) {
-                  final newNhanVien = NhanVien(
-                    maNhanVien: maNhanVienController.text,
-                    tenNhanVien: tenNhanVienController.text,
-                    chucVu:
-                        chucVuController.text.isEmpty
-                            ? null
-                            : chucVuController.text,
-                    diaChi:
-                        diaChiController.text.isEmpty
-                            ? null
-                            : diaChiController.text,
-                    dienThoai:
-                        dienThoaiController.text.isEmpty
-                            ? null
-                            : dienThoaiController.text,
-                    hinhAnh:
-                        hinhAnhController.text.isEmpty
-                            ? null
-                            : hinhAnhController.text,
-                    ghiChu:
-                        ghiChuController.text.isEmpty
-                            ? null
-                            : ghiChuController.text,
-                  );
+              content: SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        initialValue: nhanVien?.maNhanVien ?? 'Tự động tạo',
+                        decoration: InputDecoration(labelText: 'Mã Nhân Viên'),
+                        readOnly: true, // Không cho phép sửa mã
+                      ),
+                      TextFormField(
+                        controller: tenNhanVienController,
+                        decoration: InputDecoration(labelText: 'Tên Nhân Viên'),
+                        validator: (value) {
+                          if (value == null || value.isEmpty)
+                            return 'Vui lòng nhập tên nhân viên.';
+                          return null;
+                        },
+                      ),
+                      TextFormField(
+                        controller: chucVuController,
+                        decoration: InputDecoration(labelText: 'Chức Vụ'),
+                      ),
+                      TextFormField(
+                        controller: diaChiController,
+                        decoration: InputDecoration(labelText: 'Địa Chỉ'),
+                      ),
+                      TextFormField(
+                        controller: dienThoaiController,
+                        decoration: InputDecoration(labelText: 'Điện Thoại'),
+                      ),
+                      // Hiển thị hình ảnh hiện tại và nút chọn ảnh
+                      Row(
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child:
+                                _pickedImagePath != null &&
+                                        _pickedImagePath!.isNotEmpty
+                                    ? Image.file(
+                                      File(_pickedImagePath!),
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (
+                                            context,
+                                            error,
+                                            stackTrace,
+                                          ) => Image.asset(
+                                            'assets/HinhAnh/default_avatar.jpg',
+                                            fit: BoxFit.cover,
+                                          ),
+                                    )
+                                    : (hasExistingImage &&
+                                            nhanVien?.hinhAnh != null
+                                        ? Image.asset(
+                                          'assets/HinhAnh/NhanVien/${nhanVien!.hinhAnh!}',
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (
+                                                context,
+                                                error,
+                                                stackTrace,
+                                              ) => Image.asset(
+                                                'assets/HinhAnh/default_avatar.jpg',
+                                                fit: BoxFit.cover,
+                                              ),
+                                        )
+                                        : const Icon(Icons.image, size: 50)),
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                final ImagePicker _picker = ImagePicker();
+                                final XFile? image = await _picker.pickImage(
+                                  source: ImageSource.gallery,
+                                );
+                                if (image != null) {
+                                  setStateDialog(() {
+                                    _pickedImagePath = image.path;
+                                  });
+                                }
+                              },
+                              icon: Icon(Icons.photo_library),
+                              label: Text('Chọn ảnh từ Gallery'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      TextFormField(
+                        controller: ghiChuController,
+                        decoration: InputDecoration(labelText: 'Ghi Chú'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      String? finalImagePath =
+                          _pickedImagePath != null
+                              ? _pickedImagePath!.split('/').last
+                              : null;
 
-                  final dbHelper = QLQuanAnDatabaseHelper.instance;
-                  if (nhanVien == null) {
-                    // Thêm mới
-                    await dbHelper.addNhanVien(newNhanVien);
-                  } else {
-                    // Cập nhật
-                    await dbHelper.updateNhanVien2(newNhanVien);
-                  }
-                  _loadNhanVienList(); // Tải lại danh sách
-                  Navigator.of(ctx).pop();
-                }
-              },
-              child: Text(nhanVien == null ? 'Thêm' : 'Lưu'),
-            ),
-          ],
+                      if (nhanVien == null) {
+                        // Thêm mới
+                        int nextIdNum =
+                            await QLQuanAnDatabaseHelper.instance
+                                .getNextMaNhanVien();
+                        String newMaNhanVien =
+                            'NV${nextIdNum.toString().padLeft(2, '0')}';
+
+                        final newNhanVien = NhanVien(
+                          maNhanVien: newMaNhanVien,
+                          tenNhanVien: tenNhanVienController.text,
+                          chucVu:
+                              chucVuController.text.isEmpty
+                                  ? null
+                                  : chucVuController.text,
+                          diaChi:
+                              diaChiController.text.isEmpty
+                                  ? null
+                                  : diaChiController.text,
+                          dienThoai:
+                              dienThoaiController.text.isEmpty
+                                  ? null
+                                  : dienThoaiController.text,
+                          hinhAnh: finalImagePath,
+                          ghiChu:
+                              ghiChuController.text.isEmpty
+                                  ? null
+                                  : ghiChuController.text,
+                        );
+                        await QLQuanAnDatabaseHelper.instance.addNhanVien(
+                          newNhanVien,
+                        );
+
+                        // Thêm người dùng liên quan nếu chưa có
+                        final existingUser = await QLQuanAnDatabaseHelper
+                            .instance
+                            .getUserByMaNguoiDung(newMaNhanVien);
+                        if (existingUser == null) {
+                          await QLQuanAnDatabaseHelper.instance.addUser(
+                            User(
+                              maNguoiDung: newMaNhanVien,
+                              tenDangNhap: tenNhanVienController.text,
+                              matKhau: 'password123', // Mật khẩu mặc định
+                              email:
+                                  '${newMaNhanVien.toLowerCase()}@example.com', // Email mặc định
+                              maVaiTro:
+                                  'NV', // Mặc định là nhân viên, admin tự chỉnh sau
+                              maLienQuan: newMaNhanVien,
+                            ),
+                          );
+                        }
+                      } else {
+                        // Cập nhật
+                        final updatedNhanVien = NhanVien(
+                          maNhanVien: nhanVien.maNhanVien,
+                          tenNhanVien: tenNhanVienController.text,
+                          chucVu:
+                              chucVuController.text.isEmpty
+                                  ? null
+                                  : chucVuController.text,
+                          diaChi:
+                              diaChiController.text.isEmpty
+                                  ? null
+                                  : diaChiController.text,
+                          dienThoai:
+                              dienThoaiController.text.isEmpty
+                                  ? null
+                                  : dienThoaiController.text,
+                          hinhAnh:
+                              finalImagePath ??
+                              nhanVien
+                                  .hinhAnh, // Giữ ảnh cũ nếu không chọn ảnh mới
+                          ghiChu:
+                              ghiChuController.text.isEmpty
+                                  ? null
+                                  : ghiChuController.text,
+                        );
+                        await QLQuanAnDatabaseHelper.instance.updateNhanVien2(
+                          updatedNhanVien,
+                        );
+
+                        // Cập nhật tên người dùng liên quan nếu tên nhân viên thay đổi
+                        final userMap = await QLQuanAnDatabaseHelper.instance
+                            .getUserByMaNguoiDung(nhanVien.maNhanVien);
+                        if (userMap != null) {
+                          final user = User.fromMap(userMap);
+                          if (user.tenDangNhap != updatedNhanVien.tenNhanVien) {
+                            await QLQuanAnDatabaseHelper.instance.updateUser2(
+                              user.copyWith(
+                                tenDangNhap: updatedNhanVien.tenNhanVien,
+                              ),
+                            );
+                          }
+                        }
+                      }
+                      _loadNhanVienList();
+                      Navigator.of(ctx).pop();
+                    }
+                  },
+                  child: Text(nhanVien == null ? 'Thêm' : 'Lưu'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -179,11 +300,38 @@ class _QuanLyNhanVienPageState extends State<QuanLyNhanVienPage> {
   Future<void> _deleteNhanVien(String maNhanVien) async {
     final dbHelper = QLQuanAnDatabaseHelper.instance;
     try {
-      await dbHelper.deleteNhanVien(maNhanVien);
-      _loadNhanVienList(); // Tải lại danh sách
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Đã xóa nhân viên $maNhanVien')));
+      showDialog(
+        context: context,
+        builder:
+            (ctx) => AlertDialog(
+              title: const Text('Xác nhận xóa'),
+              content: Text(
+                'Bạn có chắc chắn muốn xóa nhân viên $maNhanVien không? Thao tác này cũng sẽ xóa người dùng liên quan.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(ctx).pop(); // Đóng dialog xác nhận
+                    await dbHelper.deleteNhanVienAndUser(maNhanVien);
+                    _loadNhanVienList(); // Tải lại danh sách
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Đã xóa nhân viên $maNhanVien và người dùng liên quan.',
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text('Xóa'),
+                ),
+              ],
+            ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Lỗi khi xóa nhân viên: ${e.toString()}')),
@@ -283,6 +431,26 @@ class _QuanLyNhanVienPageState extends State<QuanLyNhanVienPage> {
                           'Điện Thoại: ${nhanVien.dienThoai ?? 'N/A'}',
                           style: const TextStyle(fontSize: 16),
                         ),
+                        if (nhanVien.hinhAnh != null &&
+                            nhanVien.hinhAnh!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Image.file(
+                              File(
+                                nhanVien.hinhAnh!,
+                              ), // Giả sử hinhAnh là đường dẫn file cục bộ
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (context, error, stackTrace) => Image.asset(
+                                    'assets/HinhAnh/default_avatar.jpg',
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                  ),
+                            ),
+                          ),
                         Text(
                           'Ghi Chú: ${nhanVien.ghiChu ?? 'N/A'}',
                           style: const TextStyle(fontSize: 16),

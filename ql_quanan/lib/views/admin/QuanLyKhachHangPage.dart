@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../database/DatabaseHelper.dart';
 import '../../models/KhachHang.dart';
+import '../../models/User.dart'; // Import User model
 
 class QuanLyKhachHangPage extends StatefulWidget {
   const QuanLyKhachHangPage({Key? key}) : super(key: key);
@@ -39,9 +42,6 @@ class _QuanLyKhachHangPageState extends State<QuanLyKhachHangPage> {
   }
 
   Future<void> _addOrEditKhachHang({KhachHang? khachHang}) async {
-    final TextEditingController maKhachHangController = TextEditingController(
-      text: khachHang?.maKhachHang,
-    );
     final TextEditingController tenKhachHangController = TextEditingController(
       text: khachHang?.tenKhachHang,
     );
@@ -51,117 +51,228 @@ class _QuanLyKhachHangPageState extends State<QuanLyKhachHangPage> {
     final TextEditingController dienThoaiController = TextEditingController(
       text: khachHang?.dienThoai,
     );
-    final TextEditingController hinhAnhController = TextEditingController(
-      text: khachHang?.hinhAnh,
-    );
     final TextEditingController ghiChuController = TextEditingController(
       text: khachHang?.ghiChu,
     );
+
+    // Để lưu đường dẫn ảnh tạm thời sau khi chọn
+    String? _pickedImagePath = khachHang?.hinhAnh;
+    // Khách hàng hiện tại có hình ảnh hay không
+    bool hasExistingImage =
+        khachHang?.hinhAnh != null && khachHang!.hinhAnh!.isNotEmpty;
 
     final _formKey = GlobalKey<FormState>();
 
     await showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          title: Text(
-            khachHang == null ? 'Thêm Khách Hàng Mới' : 'Sửa Khách Hàng',
-          ),
-          content: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: maKhachHangController,
-                    decoration: InputDecoration(
-                      labelText: 'Mã Khách Hàng (KHxx)',
-                    ),
-                    enabled:
-                        khachHang ==
-                        null, // Không cho phép sửa mã khi chỉnh sửa
-                    validator: (value) {
-                      if (value == null || value.isEmpty)
-                        return 'Vui lòng nhập mã khách hàng.';
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: tenKhachHangController,
-                    decoration: InputDecoration(labelText: 'Tên Khách Hàng'),
-                    validator: (value) {
-                      if (value == null || value.isEmpty)
-                        return 'Vui lòng nhập tên khách hàng.';
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: diaChiController,
-                    decoration: InputDecoration(labelText: 'Địa Chỉ'),
-                  ),
-                  TextFormField(
-                    controller: dienThoaiController,
-                    decoration: InputDecoration(labelText: 'Điện Thoại'),
-                  ),
-                  TextFormField(
-                    controller: hinhAnhController,
-                    decoration: InputDecoration(
-                      labelText: 'Tên file Hình ảnh (ví dụ: image.jpg)',
-                    ),
-                  ),
-                  TextFormField(
-                    controller: ghiChuController,
-                    decoration: InputDecoration(labelText: 'Ghi Chú'),
-                  ),
-                ],
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(
+                khachHang == null ? 'Thêm Khách Hàng Mới' : 'Sửa Khách Hàng',
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Hủy'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (_formKey.currentState!.validate()) {
-                  final newKhachHang = KhachHang(
-                    maKhachHang: maKhachHangController.text,
-                    tenKhachHang: tenKhachHangController.text,
-                    diaChi:
-                        diaChiController.text.isEmpty
-                            ? null
-                            : diaChiController.text,
-                    dienThoai:
-                        dienThoaiController.text.isEmpty
-                            ? null
-                            : dienThoaiController.text,
-                    hinhAnh:
-                        hinhAnhController.text.isEmpty
-                            ? null
-                            : hinhAnhController.text,
-                    ghiChu:
-                        ghiChuController.text.isEmpty
-                            ? null
-                            : ghiChuController.text,
-                  );
+              content: SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        initialValue: khachHang?.maKhachHang ?? 'Tự động tạo',
+                        decoration: InputDecoration(labelText: 'Mã Khách Hàng'),
+                        readOnly: true, // Không cho phép sửa mã
+                      ),
+                      TextFormField(
+                        controller: tenKhachHangController,
+                        decoration: InputDecoration(
+                          labelText: 'Tên Khách Hàng',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty)
+                            return 'Vui lòng nhập tên khách hàng.';
+                          return null;
+                        },
+                      ),
+                      TextFormField(
+                        controller: diaChiController,
+                        decoration: InputDecoration(labelText: 'Địa Chỉ'),
+                      ),
+                      TextFormField(
+                        controller: dienThoaiController,
+                        decoration: InputDecoration(labelText: 'Điện Thoại'),
+                      ),
+                      // Hiển thị hình ảnh hiện tại và nút chọn ảnh
+                      Row(
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey),
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            child:
+                                _pickedImagePath != null &&
+                                        _pickedImagePath!.isNotEmpty &&
+                                        File(_pickedImagePath!)
+                                            .existsSync() // Kiểm tra file tồn tại
+                                    ? Image.file(
+                                      File(_pickedImagePath!),
+                                      fit: BoxFit.cover,
+                                    )
+                                    : (hasExistingImage &&
+                                            khachHang?.hinhAnh != null
+                                        ? Image.asset(
+                                          'assets/HinhAnh/KhachHang/${khachHang!.hinhAnh!}',
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (
+                                                context,
+                                                error,
+                                                stackTrace,
+                                              ) => Image.asset(
+                                                'assets/HinhAnh/default_avatar.jpg',
+                                                fit: BoxFit.cover,
+                                              ),
+                                        )
+                                        : const Icon(Icons.image, size: 50)),
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                final ImagePicker _picker = ImagePicker();
+                                final XFile? image = await _picker.pickImage(
+                                  source: ImageSource.gallery,
+                                );
+                                if (image != null) {
+                                  setStateDialog(() {
+                                    _pickedImagePath = image.path;
+                                  });
+                                }
+                              },
+                              icon: Icon(Icons.photo_library),
+                              label: Text('Chọn ảnh từ Gallery'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      TextFormField(
+                        controller: ghiChuController,
+                        decoration: InputDecoration(labelText: 'Ghi Chú'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      String? finalImagePath =
+                          _pickedImagePath != null &&
+                                  File(_pickedImagePath!).existsSync()
+                              ? _pickedImagePath!.split('/').last
+                              : null;
 
-                  final dbHelper = QLQuanAnDatabaseHelper.instance;
-                  if (khachHang == null) {
-                    // Thêm mới
-                    await dbHelper.addKhachHang(newKhachHang);
-                  } else {
-                    // Cập nhật
-                    await dbHelper.updateKhachHang2(newKhachHang);
-                  }
-                  _loadKhachHangList(); // Tải lại danh sách
-                  Navigator.of(ctx).pop();
-                }
-              },
-              child: Text(khachHang == null ? 'Thêm' : 'Lưu'),
-            ),
-          ],
+                      if (khachHang == null) {
+                        // Thêm mới
+                        int nextIdNum =
+                            await QLQuanAnDatabaseHelper.instance
+                                .getNextMaKhachHang();
+                        String newMaKhachHang =
+                            'KH${nextIdNum.toString().padLeft(2, '0')}';
+
+                        final newKhachHang = KhachHang(
+                          maKhachHang: newMaKhachHang,
+                          tenKhachHang: tenKhachHangController.text,
+                          diaChi:
+                              diaChiController.text.isEmpty
+                                  ? null
+                                  : diaChiController.text,
+                          dienThoai:
+                              diaChiController.text.isEmpty
+                                  ? null
+                                  : dienThoaiController.text,
+                          hinhAnh: finalImagePath,
+                          ghiChu:
+                              ghiChuController.text.isEmpty
+                                  ? null
+                                  : ghiChuController.text,
+                        );
+                        await QLQuanAnDatabaseHelper.instance.addKhachHang(
+                          newKhachHang,
+                        );
+
+                        // Thêm người dùng liên quan nếu chưa có
+                        final existingUser = await QLQuanAnDatabaseHelper
+                            .instance
+                            .getUserByMaNguoiDung(newMaKhachHang);
+                        if (existingUser == null) {
+                          await QLQuanAnDatabaseHelper.instance.insertUser(
+                            User(
+                              maNguoiDung: newMaKhachHang,
+                              tenDangNhap: tenKhachHangController.text,
+                              matKhau: 'password123', // Mật khẩu mặc định
+                              email:
+                                  '${newMaKhachHang.toLowerCase()}@example.com', // Email mặc định
+                              maVaiTro: 'KH',
+                              maLienQuan: newMaKhachHang,
+                            ).toMap(),
+                          );
+                        }
+                      } else {
+                        // Cập nhật
+                        final updatedKhachHang = KhachHang(
+                          maKhachHang: khachHang.maKhachHang,
+                          tenKhachHang: tenKhachHangController.text,
+                          diaChi:
+                              diaChiController.text.isEmpty
+                                  ? null
+                                  : diaChiController.text,
+                          dienThoai:
+                              dienThoaiController.text.isEmpty
+                                  ? null
+                                  : dienThoaiController.text,
+                          hinhAnh: finalImagePath ?? khachHang.hinhAnh,
+                          ghiChu:
+                              ghiChuController.text.isEmpty
+                                  ? null
+                                  : ghiChuController.text,
+                        );
+                        await QLQuanAnDatabaseHelper.instance.updateKhachHang2(
+                          updatedKhachHang,
+                        );
+
+                        // Cập nhật tên người dùng liên quan nếu tên khách hàng thay đổi
+                        final userMap = await QLQuanAnDatabaseHelper.instance
+                            .getUserByMaNguoiDung(khachHang.maKhachHang);
+                        if (userMap != null) {
+                          final user = User.fromMap(userMap);
+                          if (user.tenDangNhap !=
+                              updatedKhachHang.tenKhachHang) {
+                            await QLQuanAnDatabaseHelper.instance.updateUser2(
+                              user.copyWith(
+                                tenDangNhap: updatedKhachHang.tenKhachHang,
+                              ),
+                            );
+                          }
+                        }
+                      }
+                      _loadKhachHangList();
+                      Navigator.of(ctx).pop();
+                    }
+                  },
+                  child: Text(khachHang == null ? 'Thêm' : 'Lưu'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -170,11 +281,38 @@ class _QuanLyKhachHangPageState extends State<QuanLyKhachHangPage> {
   Future<void> _deleteKhachHang(String maKhachHang) async {
     final dbHelper = QLQuanAnDatabaseHelper.instance;
     try {
-      await dbHelper.deleteKhachHang(maKhachHang);
-      _loadKhachHangList(); // Tải lại danh sách
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Đã xóa khách hàng $maKhachHang')));
+      showDialog(
+        context: context,
+        builder:
+            (ctx) => AlertDialog(
+              title: const Text('Xác nhận xóa'),
+              content: Text(
+                'Bạn có chắc chắn muốn xóa khách hàng $maKhachHang không? Thao tác này cũng sẽ xóa người dùng liên quan.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(ctx).pop(); // Đóng dialog xác nhận
+                    await dbHelper.deleteKhachHangAndUser(maKhachHang);
+                    _loadKhachHangList(); // Tải lại danh sách
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Đã xóa khách hàng $maKhachHang và người dùng liên quan.',
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text('Xóa'),
+                ),
+              ],
+            ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Lỗi khi xóa khách hàng: ${e.toString()}')),
@@ -270,6 +408,26 @@ class _QuanLyKhachHangPageState extends State<QuanLyKhachHangPage> {
                           'Điện Thoại: ${khachHang.dienThoai ?? 'N/A'}',
                           style: const TextStyle(fontSize: 16),
                         ),
+                        if (khachHang.hinhAnh != null &&
+                            khachHang.hinhAnh!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Image.file(
+                              File(
+                                khachHang.hinhAnh!,
+                              ), // Giả sử hinhAnh là đường dẫn file cục bộ
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (context, error, stackTrace) => Image.asset(
+                                    'assets/HinhAnh/default_avatar.jpg', // Ảnh mặc định nếu file không tồn tại
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                  ),
+                            ),
+                          ),
                         Text(
                           'Ghi Chú: ${khachHang.ghiChu ?? 'N/A'}',
                           style: const TextStyle(fontSize: 16),

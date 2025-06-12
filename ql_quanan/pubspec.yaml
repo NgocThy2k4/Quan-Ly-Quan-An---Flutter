@@ -17,7 +17,7 @@ dependencies:
   sqflite: ^2.3.2       # (dart sdk: 3.0) -- lưu trữ dữ liệu cơ sở dữ liệu trong ứng dụng Flutter.
   provider: ^6.1.4      # (dart sdk: 2.12)
   flutter_staggered_animations: ^1.1.1
-  intl: ^0.18.1        # (dart sdk: 3.0) -- hỗ trợ định dạng và phân tích các giá trị ngày tháng, số, và tiền tệ trong ứng dụng Flutter
+  intl: ^0.20.2        # (dart sdk: 3.0) -- hỗ trợ định dạng và phân tích các giá trị ngày tháng, số, và tiền tệ trong ứng dụng Flutter
   fluttertoast: ^8.0.9
   
   sqlite3: ^2.1.0
@@ -28,10 +28,13 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   carousel_slider: ^5.0.0
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   url_launcher: ^6.3.0 # (dart sdk: 3.0) -- mở các liên kết URL trong trình duyệt hoặc ứng dụng khác trên thiết bị di động
   crypto: ^3.0.5
   fl_chart: ^1.0.0
+  image_picker: ^1.1.1
+
+
 
 dev_dependencies:
   flutter_test:

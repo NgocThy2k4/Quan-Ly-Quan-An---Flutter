@@ -79,17 +79,27 @@ class QLQuanAnDatabaseHelper {
         print('Error adding email column to nguoi_dung: $e');
       }
     }
+    // Thêm bảng chi_phi nếu chưa có (version >= 110)
+    if (oldVersion < 110) {
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS chi_phi (
+            ma_chi_phi NVARCHAR(15) PRIMARY KEY,
+            ten_chi_phi TEXT NOT NULL,
+            loai_chi_phi TEXT,
+            so_tien REAL NOT NULL,
+            ngay_chi TEXT NOT NULL,
+            ghi_chu TEXT
+          )
+        ''');
+        print('Table chi_phi created.');
+      } catch (e) {
+        print('Error creating chi_phi table: $e');
+      }
+    }
   }
 
   Future<void> _createDb(Database db, int version) async {
-    // Bảng vai_tro
-    await db.execute('''
-      CREATE TABLE vai_tro (
-        ma_vai_tro NVARCHAR(15) PRIMARY KEY,
-        ten_vai_tro NVARCHAR(100) NOT NULL
-      )
-    ''');
-
     // Bảng vai_tro
     await db.execute('''
       CREATE TABLE vai_tro (
@@ -195,6 +205,18 @@ class QLQuanAnDatabaseHelper {
         PRIMARY KEY (ma_hoa_don, ma_mon, mon_thuc_don),
         FOREIGN KEY (ma_hoa_don) REFERENCES hoa_don (ma_hoa_don),
         FOREIGN KEY (ma_mon) REFERENCES mon_an (ma_mon)
+      )
+    ''');
+
+    // Bảng chi_phi (Mới)
+    await db.execute('''
+      CREATE TABLE chi_phi (
+        ma_chi_phi NVARCHAR(15) PRIMARY KEY,
+        ten_chi_phi TEXT NOT NULL,
+        loai_chi_phi TEXT,
+        so_tien REAL NOT NULL,
+        ngay_chi TEXT NOT NULL,
+        ghi_chu TEXT
       )
     ''');
 
@@ -532,12 +554,175 @@ class QLQuanAnDatabaseHelper {
     );
   }
 
+  // Lấy các món ăn có khuyến mãi khăn lạnh/nước ngọt/cả hai
+  Future<List<MonAn>> getPromotionFoods() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'mon_an',
+      where: "khuyen_mai LIKE '%Khăn lạnh%' OR khuyen_mai LIKE '%Nước ngọt%'",
+      limit: 4,
+    );
+    print('DBG: getPromotionFoods raw maps: $maps'); // DEBUG PRINT
+    return List.generate(maps.length, (i) {
+      return MonAn.fromMap(maps[i]);
+    });
+  }
+
+  // Xóa Khách Hàng và người dùng liên quan
+  Future<void> deleteKhachHangAndUser(String maKhachHang) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      // Xóa khách hàng
+      await txn.delete(
+        'khach_hang',
+        where: 'ma_khach_hang = ?',
+        whereArgs: [maKhachHang],
+      );
+      print('DBG: Deleted KhachHang: $maKhachHang');
+
+      // Xóa người dùng liên quan
+      await txn.delete(
+        'nguoi_dung',
+        where: 'ma_lien_quan = ? AND ma_vai_tro = ?',
+        whereArgs: [maKhachHang, 'KH'],
+      );
+      print('DBG: Deleted related User for KhachHang: $maKhachHang');
+    });
+  }
+
+  // Xóa người dùng và dữ liệu liên quan
+  Future<void> deleteUserAndRelatedData(String maNguoiDung) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final user = await txn.query(
+        'nguoi_dung',
+        where: 'ma_nguoi_dung = ?',
+        whereArgs: [maNguoiDung],
+      );
+
+      if (user.isNotEmpty) {
+        final maLienQuan = user.first['ma_lien_quan'] as String?;
+        final maVaiTro = user.first['ma_vai_tro'] as String?;
+
+        if (maLienQuan != null) {
+          if (maVaiTro == 'KH') {
+            await txn.delete(
+              'khach_hang',
+              where: 'ma_khach_hang = ?',
+              whereArgs: [maLienQuan],
+            );
+            print('DBG: Deleted KhachHang with ma_khach_hang: $maLienQuan');
+          } else if (maVaiTro == 'NV' || maVaiTro == 'QL') {
+            await txn.delete(
+              'nhan_vien',
+              where: 'ma_nhan_vien = ?',
+              whereArgs: [maLienQuan],
+            );
+            print('DBG: Deleted NhanVien with ma_nhan_vien: $maLienQuan');
+          }
+        }
+        await txn.delete(
+          'nguoi_dung',
+          where: 'ma_nguoi_dung = ?',
+          whereArgs: [maNguoiDung],
+        );
+        print('DBG: Deleted User with ma_nguoi_dung: $maNguoiDung');
+      }
+    });
+  }
+
+  // Xóa Nhân Viên và người dùng liên quan
+  Future<void> deleteNhanVienAndUser(String maNhanVien) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      // Xóa nhân viên
+      await txn.delete(
+        'nhan_vien',
+        where: 'ma_nhan_vien = ?',
+        whereArgs: [maNhanVien],
+      );
+      print('DBG: Deleted NhanVien: $maNhanVien');
+
+      // Xóa người dùng liên quan (có thể là NV hoặc QL)
+      await txn.delete(
+        'nguoi_dung',
+        where: 'ma_lien_quan = ? AND (ma_vai_tro = ? OR ma_vai_tro = ?)',
+        whereArgs: [maNhanVien, 'NV', 'QL'],
+      );
+      print('DBG: Deleted related User for NhanVien: $maNhanVien');
+    });
+  }
+
+  // Lấy các món ăn có khuyến mãi (don_gia_khuyen_mai khác 0 và nhỏ hơn don_gia)
+  Future<List<MonAn>> getDiscountedFoods() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'mon_an',
+      where: 'don_gia_khuyen_mai > 0 AND don_gia_khuyen_mai < don_gia',
+      orderBy:
+          '(don_gia - don_gia_khuyen_mai) DESC', // Sắp xếp theo mức giảm giá
+      limit: 4,
+    );
+    return List.generate(maps.length, (i) {
+      return MonAn.fromMap(maps[i]);
+    });
+  }
+
+  // Lấy các món ăn được mua nhiều nhất dựa trên chi_tiet_hoa_don
+  Future<List<MonAn>> getMostOrderedFoods() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT
+        ma_mon,
+        SUM(so_luong) as total_quantity_ordered
+      FROM
+        chi_tiet_hoa_don
+      GROUP BY
+        ma_mon
+      ORDER BY
+        total_quantity_ordered DESC
+      LIMIT 4
+    ''');
+
+    List<MonAn> mostOrderedFoods = [];
+    for (var item in maps) {
+      final maMon = item['ma_mon'] as String;
+      final monAn = await getMonAn(maMon);
+      if (monAn != null) {
+        mostOrderedFoods.add(monAn);
+      }
+    }
+    return mostOrderedFoods;
+  }
+
+  // Phương thức mới: Lấy món ăn theo mã loại
   Future<List<MonAn>> getMonAnByLoai(String maLoai) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
       'mon_an',
       where: 'ma_loai = ?',
       whereArgs: [maLoai],
+    );
+    return List.generate(maps.length, (i) {
+      return MonAn.fromMap(maps[i]);
+    });
+  }
+
+  // Phương thức mới: Tìm kiếm món ăn theo tên hoặc mã món ăn, có thể lọc theo loại món ăn
+  Future<List<MonAn>> searchMonAn(String query, {String? maLoai}) async {
+    final db = await database;
+    String whereClause = 'ten_mon LIKE ? OR ma_mon LIKE ?';
+    List<dynamic> whereArgs = ['%${query}%', '%${query}%'];
+
+    if (maLoai != null && maLoai.isNotEmpty) {
+      whereClause += ' AND ma_loai = ?';
+      whereArgs.add(maLoai);
+    }
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'mon_an',
+      where: whereClause,
+      whereArgs: whereArgs,
     );
     return List.generate(maps.length, (i) {
       return MonAn.fromMap(maps[i]);
@@ -707,26 +892,6 @@ class QLQuanAnDatabaseHelper {
       where: 'ma_mon = ?',
       whereArgs: [monAn.maMon],
     );
-  }
-
-  Future<List<MonAn>> searchMonAn(String query, {String? maLoai}) async {
-    final db = await database;
-    String whereClause = 'ten_mon LIKE ? OR ma_mon LIKE ?';
-    List<dynamic> whereArgs = ['%${query}%', '%${query}%'];
-
-    if (maLoai != null && maLoai.isNotEmpty) {
-      whereClause += ' AND ma_loai = ?';
-      whereArgs.add(maLoai);
-    }
-
-    final List<Map<String, dynamic>> maps = await db.query(
-      'mon_an',
-      where: whereClause,
-      whereArgs: whereArgs,
-    );
-    return List.generate(maps.length, (i) {
-      return MonAn.fromMap(maps[i]);
-    });
   }
 
   Future<int> getNextMaMon() async {
