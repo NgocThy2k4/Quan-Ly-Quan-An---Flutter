@@ -6,7 +6,8 @@ import 'QuanLyNhanVienPage.dart';
 import 'QuanLyKhachHangPage.dart';
 import 'QuanLyMonAnPage.dart';
 import 'QuanLyHoaDonPage.dart'; // Import trang quản lý hóa đơn
-// import các trang quản lý khác nếu có
+import 'QuanLyNguoiDungPage.dart'; // Import trang quản lý người dùng
+import 'BaoCaoDoanhThuPage.dart'; // Import trang báo cáo
 
 class AdminDashboard extends StatelessWidget {
   @override
@@ -23,7 +24,7 @@ class AdminDashboard extends StatelessWidget {
           (Route<dynamic> route) => false,
         );
       });
-      return Scaffold(
+      return const Scaffold(
         body: Center(
           child: CircularProgressIndicator(),
         ), // Hoặc một màn hình loading/redirect
@@ -32,33 +33,41 @@ class AdminDashboard extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Bảng Điều Khiển Quản Lý',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Color(0xFFFFB2D9),
-        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: const Color(0xFFFFB2D9),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
+      backgroundColor: const Color(0xFFFCE4EC),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: ListView(
+          // Changed Column to ListView for scrollability
           children: [
             Card(
               elevation: 4,
-              margin: EdgeInsets.only(bottom: 16),
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
               child: ListTile(
-                leading: Icon(Icons.people, color: Colors.blueAccent),
-                title: Text(
+                leading: const Icon(
+                  Icons.people,
+                  color: Colors.blueAccent,
+                  size: 30,
+                ),
+                title: const Text(
                   'Quản Lý Nhân Viên',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                trailing: Icon(Icons.arrow_forward_ios),
+                trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => QuanLyNhanVienPage(),
+                      builder: (context) => const QuanLyNhanVienPage(),
                     ),
                   );
                 },
@@ -66,19 +75,22 @@ class AdminDashboard extends StatelessWidget {
             ),
             Card(
               elevation: 4,
-              margin: EdgeInsets.only(bottom: 16),
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
               child: ListTile(
-                leading: Icon(Icons.group, color: Colors.green),
-                title: Text(
+                leading: const Icon(Icons.group, color: Colors.green, size: 30),
+                title: const Text(
                   'Quản Lý Khách Hàng',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                trailing: Icon(Icons.arrow_forward_ios),
+                trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => QuanLyKhachHangPage(),
+                      builder: (context) => const QuanLyKhachHangPage(),
                     ),
                   );
                 },
@@ -86,36 +98,106 @@ class AdminDashboard extends StatelessWidget {
             ),
             Card(
               elevation: 4,
-              margin: EdgeInsets.only(bottom: 16),
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
               child: ListTile(
-                leading: Icon(Icons.fastfood, color: Colors.orange),
-                title: Text(
+                leading: const Icon(
+                  Icons.fastfood,
+                  color: Colors.orange,
+                  size: 30,
+                ),
+                title: const Text(
                   'Quản Lý Món Ăn',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                trailing: Icon(Icons.arrow_forward_ios),
+                trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => QuanLyMonAnPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const QuanLyMonAnPage(),
+                    ),
                   );
                 },
               ),
             ),
             Card(
               elevation: 4,
-              margin: EdgeInsets.only(bottom: 16),
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
               child: ListTile(
-                leading: Icon(Icons.receipt, color: Colors.blueAccent),
-                title: Text(
+                leading: const Icon(
+                  Icons.receipt,
+                  color: Colors.blueAccent,
+                  size: 30,
+                ),
+                title: const Text(
                   'Quản Lý Hóa Đơn',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                trailing: Icon(Icons.arrow_forward_ios),
+                trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => QuanLyHoaDonPage()),
+                  );
+                },
+              ),
+            ),
+            Card(
+              elevation: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: ListTile(
+                leading: const Icon(
+                  Icons.account_circle,
+                  color: Colors.purple,
+                  size: 30,
+                ),
+                title: const Text(
+                  'Quản Lý Người Dùng',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const QuanLyNguoiDungPage(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Card(
+              elevation: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: ListTile(
+                leading: const Icon(
+                  Icons.analytics,
+                  color: Colors.deepOrange,
+                  size: 30,
+                ),
+                title: const Text(
+                  'Báo Cáo Doanh Thu & Lợi Nhuận',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BaoCaoDoanhThuPage(),
+                    ),
                   );
                 },
               ),
