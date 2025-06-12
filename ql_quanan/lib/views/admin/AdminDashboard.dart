@@ -8,6 +8,7 @@ import 'QuanLyMonAnPage.dart';
 import 'QuanLyHoaDonPage.dart'; // Import trang quản lý hóa đơn
 import 'QuanLyNguoiDungPage.dart'; // Import trang quản lý người dùng
 import 'BaoCaoDoanhThuPage.dart'; // Import trang báo cáo
+import 'ThongKePage.dart'; // Import trang thống kê mới
 
 class AdminDashboard extends StatelessWidget {
   @override
@@ -197,6 +198,36 @@ class AdminDashboard extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const BaoCaoDoanhThuPage(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Thêm chức năng Thống Kê Tổng Quan
+            Card(
+              elevation: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: ListTile(
+                leading: const Icon(
+                  Icons.bar_chart, // Icon cho thống kê
+                  color: Colors.teal,
+                  size: 30,
+                ),
+                title: const Text(
+                  'Thống Kê Tổng Quan',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              const ThongKePage(), // Điều hướng đến ThongKePage
                     ),
                   );
                 },

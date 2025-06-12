@@ -15,6 +15,7 @@ class _QuanLyTrangThaiDonHangState extends State<QuanLyTrangThaiDonHang> {
     locale: 'vi_VN',
     symbol: 'VNĐ',
   );
+  String? _selectedFilterStatus; // State variable for selected filter
 
   @override
   void initState() {
@@ -46,8 +47,21 @@ class _QuanLyTrangThaiDonHangState extends State<QuanLyTrangThaiDonHang> {
               }
             }
 
-            // Sắp xếp danh sách hóa đơn
-            list.sort((a, b) {
+            // Lọc danh sách nếu có filter được chọn
+            List<Map<String, dynamic>> filteredList = list;
+            if (_selectedFilterStatus != null &&
+                _selectedFilterStatus != 'Tất cả') {
+              filteredList =
+                  list
+                      .where(
+                        (hoaDon) =>
+                            hoaDon['trang_thai'] == _selectedFilterStatus,
+                      )
+                      .toList();
+            }
+
+            // Sắp xếp danh sách hóa đơn đã lọc
+            filteredList.sort((a, b) {
               final aStatus = a['trang_thai'] ?? 'Unknown';
               final bStatus = b['trang_thai'] ?? 'Unknown';
 
@@ -60,11 +74,13 @@ class _QuanLyTrangThaiDonHangState extends State<QuanLyTrangThaiDonHang> {
               }
 
               // Nếu cùng trạng thái, sắp xếp theo ngày đặt (từ cũ đến mới)
-              final aDate = a['ngay_dat'] ?? '';
-              final bDate = b['ngay_dat'] ?? '';
+              final aDate =
+                  DateTime.tryParse(a['ngay_dat'] ?? '') ?? DateTime(0);
+              final bDate =
+                  DateTime.tryParse(b['ngay_dat'] ?? '') ?? DateTime(0);
               return aDate.compareTo(bDate);
             });
-            return list;
+            return filteredList;
           });
     });
   }
@@ -87,7 +103,7 @@ class _QuanLyTrangThaiDonHangState extends State<QuanLyTrangThaiDonHang> {
     }
   }
 
-  // Hàm cập nhật trạng thái hóa đơn
+  // Hàm cập nhật trạng thái hóa đơn (cho các trạng thái thông thường)
   Future<void> _updateOrderStatus(String maHoaDon, String currentStatus) async {
     String? newStatus;
     switch (currentStatus) {
@@ -116,21 +132,117 @@ class _QuanLyTrangThaiDonHangState extends State<QuanLyTrangThaiDonHang> {
           content: Text(
             'Đã cập nhật trạng thái hóa đơn $maHoaDon thành "$newStatus"',
           ),
-          duration: const Duration(
-            milliseconds: 500,
-          ), // Cập nhật thời gian hiển thị
+          duration: const Duration(milliseconds: 500),
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Không thể cập nhật trạng thái hóa đơn này.'),
-          duration: const Duration(
-            milliseconds: 500,
-          ), // Cập nhật thời gian hiển thị
+          duration: const Duration(milliseconds: 500),
         ),
       );
     }
+  }
+
+  // Hàm hiển thị dialog hủy đơn hàng cho nhân viên/quản lý với lý do
+  Future<void> _showCancelOrderDialogForStaff(String maHoaDon) async {
+    final TextEditingController reasonController = TextEditingController();
+    String? selectedReason;
+    final List<String> commonReasons = [
+      'Hết món',
+      'Món ăn chưa đến',
+      'Hết nguyên liệu',
+      'Khác (ghi rõ)',
+    ];
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Hủy đơn hàng và nhập lý do'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Chọn lý do hủy',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: selectedReason,
+                  items:
+                      commonReasons.map((String reason) {
+                        return DropdownMenuItem<String>(
+                          value: reason,
+                          child: Text(reason),
+                        );
+                      }).toList(),
+                  onChanged: (String? newValue) {
+                    selectedReason = newValue;
+                    if (newValue != 'Khác (ghi rõ)') {
+                      reasonController.text = newValue ?? '';
+                    } else {
+                      reasonController
+                          .clear(); // Xóa nếu chọn "Khác" để người dùng nhập
+                    }
+                    (ctx as Element)
+                        .markNeedsBuild(); // Rebuild dialog to update TextFormField
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: reasonController,
+                  decoration: const InputDecoration(
+                    labelText: 'Lý do chi tiết (nếu có)',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Hủy bỏ'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (reasonController.text.isNotEmpty) {
+                  await QLQuanAnDatabaseHelper.instance.updateHoaDonStatus(
+                    maHoaDon,
+                    'Đã hủy',
+                    ghiChu: 'NV/QL hủy: ${reasonController.text}',
+                  );
+                  _loadHoaDonList(); // Tải lại danh sách sau khi cập nhật
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Đã hủy hóa đơn $maHoaDon thành công.'),
+                      duration: const Duration(milliseconds: 500),
+                    ),
+                  );
+                  Navigator.of(ctx).pop(); // Đóng dialog
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Vui lòng nhập lý do hủy.'),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(milliseconds: 500),
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Xác nhận hủy'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Hàm hiển thị chi tiết hóa đơn trong một dialog
@@ -178,6 +290,16 @@ class _QuanLyTrangThaiDonHangState extends State<QuanLyTrangThaiDonHang> {
 
   @override
   Widget build(BuildContext context) {
+    // List of filter options for the dropdown
+    final List<String> filterOptions = [
+      'Tất cả',
+      'Đang chờ xác nhận',
+      'Đang chuẩn bị',
+      'Đã sẵn sàng',
+      'Đã phục vụ',
+      'Đã hủy',
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -186,6 +308,33 @@ class _QuanLyTrangThaiDonHangState extends State<QuanLyTrangThaiDonHang> {
         ),
         backgroundColor: const Color(0xFFFFB2D9),
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          // Filter Dropdown
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedFilterStatus ?? 'Tất cả', // Default value
+                icon: const Icon(Icons.filter_list, color: Colors.white),
+                style: const TextStyle(color: Colors.black, fontSize: 16),
+                dropdownColor: Colors.white,
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedFilterStatus = newValue;
+                    _loadHoaDonList(); // Reload list with new filter
+                  });
+                },
+                items:
+                    filterOptions.map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+              ),
+            ),
+          ),
+        ],
       ),
       backgroundColor: const Color(0xFFFCE4EC),
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -209,6 +358,11 @@ class _QuanLyTrangThaiDonHangState extends State<QuanLyTrangThaiDonHang> {
                 final statusColor = _getStatusColor(
                   hoaDon['trang_thai'] ?? 'Unknown',
                 );
+                final String currentStatus = hoaDon['trang_thai'] ?? 'Unknown';
+                // Điều kiện để nút Hủy hiển thị và kích hoạt cho nhân viên/quản lý
+                final bool canStaffCancel =
+                    currentStatus != 'Đã phục vụ' && currentStatus != 'Đã hủy';
+
                 return Card(
                   elevation: 4,
                   margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -306,29 +460,55 @@ class _QuanLyTrangThaiDonHangState extends State<QuanLyTrangThaiDonHang> {
                               ),
                             ),
                             const SizedBox(height: 10),
+                            // Nút cập nhật trạng thái
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
                                 onPressed:
-                                    hoaDon['trang_thai'] == 'Đã phục vụ' ||
-                                            hoaDon['trang_thai'] == 'Đã hủy'
+                                    currentStatus == 'Đã phục vụ' ||
+                                            currentStatus == 'Đã hủy'
                                         ? null // Disable button if status is 'Đã phục vụ' or 'Đã hủy'
                                         : () => _updateOrderStatus(
                                           hoaDon['ma_hoa_don'],
-                                          hoaDon['trang_thai'],
+                                          currentStatus,
                                         ),
                                 icon: const Icon(Icons.update),
                                 label: Text(
-                                  _getNextStatusAction(hoaDon['trang_thai']),
+                                  _getNextStatusAction(currentStatus),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _getStatusColor(
-                                    hoaDon['trang_thai'],
+                                    currentStatus,
                                   ),
                                   foregroundColor: Colors.white,
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 10),
+                            // Nút Hủy đơn hàng cho nhân viên/quản lý
+                            if (canStaffCancel) // Chỉ hiển thị nút hủy nếu đơn hàng chưa phục vụ/hủy
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed:
+                                      () => _showCancelOrderDialogForStaff(
+                                        hoaDon['ma_hoa_don'],
+                                      ),
+                                  icon: const Icon(
+                                    Icons.cancel,
+                                    color: Colors.white,
+                                  ),
+                                  label: const Text(
+                                    'Hủy Đơn Hàng',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        Colors.red.shade700, // Màu đỏ đậm hơn
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -352,6 +532,10 @@ class _QuanLyTrangThaiDonHangState extends State<QuanLyTrangThaiDonHang> {
         return 'Hoàn thành chuẩn bị';
       case 'Đã sẵn sàng':
         return 'Đã phục vụ';
+      case 'Đã phục vụ':
+        return 'Đã hoàn tất'; // Hoặc ẩn nút
+      case 'Đã hủy':
+        return 'Đã hủy'; // Hoặc ẩn nút
       default:
         return 'Không thể cập nhật';
     }

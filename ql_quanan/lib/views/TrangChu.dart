@@ -84,20 +84,8 @@ class _TrangChuState extends State<TrangChu> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            const CircleAvatar(
-              radius: 20,
-              backgroundImage: AssetImage('assets/HinhAnh/Logo.jpg'),
-            ), // Đã sửa lỗi thiếu đóng ngoặc ở đây
-            const SizedBox(width: 10),
-            const Text(
-              'Quán Ăn Ngon',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+        title: Row(children: [
+            
           ],
         ),
         backgroundColor: const Color(0xFFFFB2D9),

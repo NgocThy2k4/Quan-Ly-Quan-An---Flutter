@@ -24,12 +24,12 @@ class QLQuanAnDatabaseHelper {
   Future<Database> _initDatabase() async {
     String path = join(
       await getDatabasesPath(),
-      'ql_quan_an_final_108.db', // Đổi tên DB để đảm bảo tạo mới
+      'ql_quan_an_final.db', // Đổi tên DB để đảm bảo tạo mới
     );
     // Tăng version để cơ sở dữ liệu được tạo lại HOẶC xóa ứng dụng thủ công
     return await openDatabase(
       path,
-      version: 109, // Tăng version lên 102
+      version: 110, // Tăng version lên 102
       onCreate: _createDb,
       onUpgrade: _onUpgrade, // Thêm onUpgrade để xử lý nâng cấp DB
     );
@@ -1122,5 +1122,51 @@ class QLQuanAnDatabaseHelper {
     );
     int maxId = result.first['max_id'] ?? 0;
     return maxId + 1;
+  }
+  // --- CÁC PHƯƠNG THỨC TRUY VẤN THỐNG KÊ MỚI (MỚI) ---
+
+  // Lấy tổng số lượng hóa đơn
+  Future<int> getTotalOrderCount() async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      'SELECT COUNT(ma_hoa_don) as total_orders FROM hoa_don',
+    );
+    return (result.first['total_orders'] as int?) ?? 0;
+  }
+
+  // Lấy số lượng khách hàng duy nhất
+  Future<int> getUniqueCustomerCount() async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      'SELECT COUNT(DISTINCT ma_khach_hang) as unique_customers FROM hoa_don',
+    );
+    return (result.first['unique_customers'] as int?) ?? 0;
+  }
+
+  // Lấy giá trị trung bình của một đơn hàng
+  Future<double> getAverageOrderValue() async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      'SELECT AVG(tong_tien) as avg_value FROM hoa_don WHERE tong_tien IS NOT NULL',
+    );
+    return (result.first['avg_value'] as double?) ?? 0.0;
+  }
+
+  // Lấy số lượng đơn hàng theo phương thức thanh toán
+  Future<List<Map<String, dynamic>>> getOrdersByPaymentMethod() async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      'SELECT hinh_thuc_thanh_toan, COUNT(ma_hoa_don) as count FROM hoa_don GROUP BY hinh_thuc_thanh_toan',
+    );
+    return result;
+  }
+
+  // Lấy số lượng đơn hàng theo trạng thái
+  Future<List<Map<String, dynamic>>> getOrderStatusBreakdown() async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      'SELECT trang_thai, COUNT(ma_hoa_don) as count FROM hoa_don GROUP BY trang_thai',
+    );
+    return result;
   }
 }

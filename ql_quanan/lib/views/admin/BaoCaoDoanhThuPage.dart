@@ -184,29 +184,29 @@ class _BaoCaoDoanhThuPageState extends State<BaoCaoDoanhThuPage> {
               color: Colors.pink.shade600,
             ),
 
-            const SizedBox(height: 20),
-            _buildSectionTitle('Doanh Thu Theo Ngày'),
-            _buildLineChartCard(_revenueByDay),
+            // const SizedBox(height: 20),
+            // _buildSectionTitle('Doanh Thu Theo Ngày'),
+            // _buildLineChartCard(_revenueByDay),
 
-            const SizedBox(height: 20),
-            _buildSectionTitle('Doanh Thu Theo Món Ăn'),
-            _buildPieChartCard(
-              _revenueByMenuItem,
-              'item_revenue',
-              'ten_mon',
-            ), // Ensure 'item_revenue' is the correct key
+            // const SizedBox(height: 20),
+            // _buildSectionTitle('Doanh Thu Theo Món Ăn'),
+            // _buildPieChartCard(
+            //   _revenueByMenuItem,
+            //   'item_revenue',
+            //   'ten_mon',
+            // ), // Ensure 'item_revenue' is the correct key
 
-            const SizedBox(height: 20),
-            _buildSectionTitle('Chi Phí Theo Danh Mục'),
-            _buildPieChartCard(
-              _expenseByCategory,
-              'total_expense',
-              'loai_chi_phi',
-            ),
+            // const SizedBox(height: 20),
+            // _buildSectionTitle('Chi Phí Theo Danh Mục'),
+            // _buildPieChartCard(
+            //   _expenseByCategory,
+            //   'total_expense',
+            //   'loai_chi_phi',
+            // ),
 
-            const SizedBox(height: 20),
-            _buildSectionTitle('Chi Tiêu Khách Hàng'),
-            _buildCustomerSpendingList(),
+            // const SizedBox(height: 20),
+            // _buildSectionTitle('Chi Tiêu Khách Hàng'),
+            // _buildCustomerSpendingList(),
           ],
         ),
       ),
